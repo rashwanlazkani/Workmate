@@ -11,10 +11,17 @@ struct DriveCloudTests {
         #expect(workspace.notes.isEmpty)
         workspace.notes = [Note(title: "iCloud backup check", body: "Unicode: möte 你好")]
         workspace.tasks = [WorkTask(title: "Mac only", reminder: Date().addingTimeInterval(3600))]
+        workspace.tasks[0].tags = ["PO-Sync", "release"]
+        var meeting = Meeting(title: "Different weekday times", start: Date(), end: Date().addingTimeInterval(3600))
+        meeting.timezone = "Europe/Stockholm"; meeting.reminderEnabled = false
+        meeting.scheduleWeekly(with: [.init(weekday: 2, startTime: "09:00", endTime: "10:00"), .init(weekday: 4, startTime: "13:00", endTime: "14:30")])
+        workspace.meetings = [meeting]
         let saved = try await api.save(workspace)
         #expect(saved.revision == workspace.revision + 1)
         #expect(try await api.load().notes == workspace.notes)
         #expect(try await api.load().tasks[0].notifiesTelegram == false)
+        #expect(try await api.load().tasks[0].tags == ["po-sync", "release"])
+        #expect(try await api.load().meetings[0].weeklySchedule == meeting.weeklySchedule)
         do { _ = try await api.save(workspace); Issue.record("Stale version was accepted") }
         catch WorkmateError.conflict { }
         let status = try await api.telegramStatus()

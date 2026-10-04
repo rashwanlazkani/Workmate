@@ -16,7 +16,7 @@ struct PriorityMenu: View {
         .accessibilityLabel("Priority: \(priority.title)").help("Change priority")
         .popover(isPresented: $shown, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Priority").font(.system(size: 13, weight: .semibold)).padding(.bottom, 4)
+                HStack { Text("Priority").font(.system(size: 13, weight: .semibold)); Spacer(); PopoverCloseButton { shown = false } }.padding(.bottom, 4)
                 ForEach(Priority.allCases) { value in
                     Button { priority = value; shown = false } label: {
                         HStack(spacing: 10) {
@@ -172,6 +172,18 @@ struct TaskRow: View {
                         .foregroundStyle(task.isArchived ? Color.secondary : Color.white.opacity(0.84)).strikethrough(task.isArchived)
                         .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                 }.buttonStyle(.plain).popover(isPresented: $edit, arrowEdge: .bottom) { TaskEditor(task: task).environmentObject(store) }
+                if !task.tagNames.isEmpty {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 6) {
+                            ForEach(task.tagNames, id: \.self) { tag in
+                                Button { store.applyFilter(tag) } label: {
+                                    Text("#" + tag).font(.system(size: 10)).foregroundStyle(Palette.accent).lineLimit(1)
+                                        .padding(.horizontal, 8).padding(.vertical, 4).background(Palette.accent.opacity(0.08), in: Capsule())
+                                }.buttonStyle(.plain).help("Search tag: " + tag)
+                            }
+                        }
+                    }.scrollIndicators(.hidden)
+                }
                 if task.isArchived {
                     HStack(spacing: 5) {
                         Label("Archived", systemImage: "archivebox")
@@ -206,6 +218,7 @@ struct TaskEditor: View {
     @Environment(\.dismiss) private var dismiss
     @ViewState<WorkTask> var task: WorkTask
     @ViewState<Bool> private var deleting = false
+    @ViewState<String> private var tagDraft = ""
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             HStack(spacing: 10) {
@@ -236,6 +249,7 @@ struct TaskEditor: View {
                     sendToTelegram: Binding(get: { task.notifiesTelegram }, set: { task.notifiesTelegram = $0 }), prominent: true
                 )
             }
+            TaskTagEditor(tags: Binding(get: { task.tagNames }, set: { task.tags = $0 }), draft: $tagDraft, meetings: store.workspace.meetings, existing: store.workspace.tasks.flatMap(\.tagNames))
             Divider().overlay(Palette.line)
             HStack(spacing: 10) {
                 Button { deleting = true } label: {
@@ -252,6 +266,8 @@ struct TaskEditor: View {
         .confirmationDialog("Delete this task?", isPresented: $deleting) { Button("Delete task", role: .destructive) { store.deleteTask(task.id); dismiss() } }
     }
     private func save() {
+        let draftTags = tagDraft.split(separator: ",").map { String($0.prefix(200)) }
+        task.tags = Array(TaskTags.unique(task.tagNames + draftTags).prefix(20))
         task.title = String(task.title.trimmingCharacters(in: .whitespacesAndNewlines).prefix(500))
         guard !task.title.isEmpty else { return }
         store.updateTask(task.id) { $0 = task }; dismiss()

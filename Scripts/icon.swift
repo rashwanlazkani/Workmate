@@ -14,7 +14,14 @@ for (name, size) in [("icon_16x16",16),("icon_16x16@2x",32),("icon_32x32",32),("
     edge.lineWidth = 12; edge.stroke()
     NSColor(srgbRed: 84/255, green: 130/255, blue: 255/255, alpha: 1).setStroke()
     let mark = NSBezierPath(); mark.lineWidth = 72; mark.lineCapStyle = .round; mark.lineJoinStyle = .round
-    mark.move(to: NSPoint(x: 290, y: 716)); mark.line(to: NSPoint(x: 390, y: 324)); mark.line(to: NSPoint(x: 512, y: 605)); mark.line(to: NSPoint(x: 635, y: 324)); mark.line(to: NSPoint(x: 735, y: 716)); mark.stroke()
+    mark.move(to: NSPoint(x: 290, y: 716)); mark.line(to: NSPoint(x: 390, y: 324)); mark.line(to: NSPoint(x: 512, y: 605)); mark.line(to: NSPoint(x: 635, y: 324)); mark.line(to: NSPoint(x: 735, y: 716))
+    NSGraphicsContext.saveGraphicsState()
+    let glow = NSShadow()
+    glow.shadowColor = NSColor(srgbRed: 84/255, green: 130/255, blue: 1, alpha: 0.72)
+    glow.shadowOffset = .zero; glow.shadowBlurRadius = CGFloat(size) * 0.052
+    glow.set(); mark.stroke()
+    NSGraphicsContext.restoreGraphicsState()
+    mark.stroke()
     NSGraphicsContext.restoreGraphicsState()
     try bitmap.representation(using: .png, properties: [:])!.write(to: root.appendingPathComponent(name + ".png"))
 }

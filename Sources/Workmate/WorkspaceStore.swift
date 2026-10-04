@@ -93,10 +93,10 @@ import WorkmateCore
         Task { await bootstrap() }
     }
     func openHelp(tutorial: Bool = false) {
-        tutorialShown = tutorial; helpShown = true
+        settingsShown = false; tutorialShown = tutorial; helpShown = true
     }
     private func bootstrap() async {
-        if !previewMode && !UserDefaults.standard.bool(forKey: "workmate.tour.completed") {
+        if !UserDefaults.standard.bool(forKey: "workmate.tour.completed") {
             Task { try? await Task.sleep(for: .milliseconds(600)); openHelp(tutorial: true) }
         }
         if storageReady { persist() }
@@ -500,7 +500,7 @@ extension WorkspaceStore {
     }
     func meetingTasks(_ meeting: Meeting) -> [WorkTask] {
         let notes = Set(linkedNotes(for: meeting).map(\.id))
-        return workspace.openTasks.filter { $0.meetingId == meeting.id || notes.contains($0.noteId) }
+        return workspace.openTasks.filter { $0.meetingId == meeting.id || notes.contains($0.noteId) || $0.tagNames.contains(TaskTags.normalize(meeting.title)) }
     }
     func refreshCalendar() {
         guard let next = calendars.readMeetings(existing: workspace.meetings), next != workspace.meetings else { return }

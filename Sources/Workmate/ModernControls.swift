@@ -6,7 +6,9 @@ extension View {
     }
     func modernTextField(autofocus: Bool = false) -> some View { modifier(ModernTextFieldAppearance(autofocus: autofocus)) }
     func popoverSurface() -> some View {
-        background(Palette.background)
+        interactiveDismissDisabled()
+            .background(PopoverKeyboard().frame(width: 0, height: 0))
+            .background(Palette.background)
             .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Palette.line).allowsHitTesting(false) }
             .foregroundStyle(Palette.foreground)
             .tint(Palette.accent).preferredColorScheme(.dark)

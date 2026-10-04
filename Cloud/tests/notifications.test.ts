@@ -98,3 +98,8 @@ it("scopes the agent to scheduling only, and refuses early or canceled jobs", as
   w.tasks[0].telegramReminder = false;
   expect(await agentRoute(service, user, "POST", "/deliver", { id: job.id }, now)).toEqual({ status: "canceled" });
 });
+it("normalizes task tags and preserves legacy tasks without tags", () => {
+  const w = workspaceSchema.parse({ ...emptyWorkspace(), tasks: [{ ...newTask("Agenda"), tags: [" #PO-Sync ", "po-sync", "RELEASE   Planning"] }, newTask("Legacy")] });
+  expect(w.tasks[0].tags).toEqual(["po-sync", "release planning"]);
+  expect(w.tasks[1].tags).toBeUndefined();
+});

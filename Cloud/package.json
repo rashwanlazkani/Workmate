@@ -14,7 +14,8 @@
     "test:cloud": "tsx scripts/native-cloud-check.ts",
     "format": "prettier --write src server infra scripts tests",
     "provision:drive": "tsx scripts/provision-drive.ts",
-    "test:drive": "tsx scripts/drive-cloud-check.ts"
+    "test:drive": "tsx scripts/drive-cloud-check.ts",
+    "test:agent": "tsx scripts/agent-cloud-check.ts"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.900.0",

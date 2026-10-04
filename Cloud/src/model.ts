@@ -28,6 +28,8 @@ export const taskSchema = z.object({
   telegramReminder: z.boolean().optional(),
   noteId: z.string(),
   meetingId: z.string().uuid().optional(),
+  tags: z.array(z.string().max(200).transform(v => v.trim().replace(/^#+/, "").trim().replace(/\s+/g, " ").toLowerCase())).max(20)
+    .transform(v => [...new Set(v.filter(Boolean))]).optional(),
   createdAt: z.string(),
   completedAt: z.string().optional(),
 });

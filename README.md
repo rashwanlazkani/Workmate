@@ -27,7 +27,7 @@ The build script publishes one `Workmate.app` here. Intermediate build products 
 
 The interface uses a charcoal `#1F1F24` background, white text, and `#5482FF` blue accents, with consistent glass buttons and anchored native SwiftUI popovers.
 
-Write in side-by-side note columns. Add tasks inline and choose Low, Medium, High, or Urgent priority. Reminder controls offer quick presets and native calendar/time controls. There is no task due-date field. Completing a task moves it into Archive; uncheck it to restore it.
+Write in side-by-side note columns. Add tasks inline and choose Low, Medium, High, or Urgent priority. Reminder controls offer quick presets and native calendar/time controls. Open a task to add lowercase tags. Existing meeting names and reused tags are suggested; click a saved tag to search. Tags matching a meeting name also include the task in that meeting’s focused view. There is no task due-date field. Completing a task moves it into Archive; uncheck it to restore it.
 
 Use the calendar control to add a meeting. Choose **One-time** for a dated meeting or **Recurring** for any combination of weekdays, with separate start/end times for each selected day. Reminders default to ten minutes before. Connect selected macOS calendars in Settings to include events from accounts already configured in Calendar. Workmate reads those calendars without editing their events. Clicking a meeting notification or the current meeting in the toolbar opens its related notes and actions. Use **Meeting** beneath a note to link an existing meeting or create another. A newly created meeting links to that note automatically. Linked meetings appear as clickable metadata tags above the note title.
 
@@ -60,4 +60,4 @@ The Raspberry Pi reminder agent delivers opted-in task reminders, meeting remind
 
 ## Help and first launch
 
-A four-step welcome tour appears on first launch and can be skipped. Open **Help → Workmate Help**, the toolbar **?**, or **Settings → Help & getting started** for searchable topics. Choose **Welcome Tour…** or **Restart tour** to replay it. Tutorial completion is remembered on this Mac. Settings stays open until you close it explicitly.
+A four-step welcome tour appears on first launch and can be skipped. Open **Help → Workmate Help**, the toolbar **?**, or **Settings → Help & getting started** for searchable topics. Choose **Welcome Tour…** or **Restart tour** to replay it. Tutorial completion is remembered on this Mac. Popups remain open when you switch apps. Press Escape to close the active popup, including from a text or time field. You can also close it explicitly, or finish with Save, Cancel or a selection.

@@ -27,7 +27,7 @@ try {
   });
   const objects = await s3.send(new ListObjectsV2Command({ Bucket: outputs.BackupBucketName, Prefix: prefix }));
   if (!objects.Contents?.length) throw new Error("Missing S3 snapshot");
-  const snapshot = await s3.send(new GetObjectCommand({ Bucket: outputs.BackupBucketName, Key: objects.Contents[0].Key }));
+  const snapshot = await s3.send(new GetObjectCommand({ Bucket: outputs.BackupBucketName, Key: [...objects.Contents].sort((a, b) => b.Key!.localeCompare(a.Key!))[0].Key }));
   const workspace = JSON.parse(await snapshot.Body!.transformToString());
   if (workspace.notes[0]?.title !== "iCloud backup check" || snapshot.ServerSideEncryption !== "AES256") throw new Error("S3 backup validation failed");
   console.log("Verified native private-key access, conflict rejection, Telegram status, and encrypted S3 snapshot. No email or Telegram messages sent.");

@@ -55,6 +55,10 @@ public struct WorkTask: Codable, Identifiable, Equatable, Sendable {
     }
     public var noteId = ""
     public var meetingId: String?
+    public var tags: [String]? = nil {
+        didSet { if let tags { self.tags = TaskTags.unique(tags) } }
+    }
+    public var tagNames: [String] { TaskTags.unique(tags ?? []) }
     public var createdAt = Dates.iso()
     public var completedAt: String?
     public var isArchived: Bool { status == "done" }
@@ -147,6 +151,9 @@ public struct Workspace: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         tasks = try c.decode([WorkTask].self, forKey: .tasks)
+        for index in tasks.indices {
+            if let tags = tasks[index].tags { tasks[index].tags = TaskTags.unique(tags) }
+        }
         notes = try c.decode([Note].self, forKey: .notes)
         nodes = try c.decodeIfPresent([JSONValue].self, forKey: .nodes) ?? []
         strokes = try c.decodeIfPresent([JSONValue].self, forKey: .strokes) ?? []
@@ -177,7 +184,7 @@ public struct Workspace: Codable, Equatable, Sendable {
     public func validated() throws -> Workspace {
         guard tasks.count <= 1000, notes.count <= 300, meetings.count <= 500,
               Set(tasks.map(\.id)).count == tasks.count, Set(notes.map(\.id)).count == notes.count,
-              tasks.allSatisfy({ UUID(uuidString: $0.id) != nil && !$0.title.isEmpty && $0.title.count <= 500 && ($0.remindAt.isEmpty || $0.reminder != nil) }),
+              tasks.allSatisfy({ UUID(uuidString: $0.id) != nil && !$0.title.isEmpty && $0.title.count <= 500 && ($0.tags?.count ?? 0) <= 20 && ($0.tags ?? []).allSatisfy { $0.count <= 200 } && ($0.remindAt.isEmpty || $0.reminder != nil) }),
               notes.allSatisfy({ UUID(uuidString: $0.id) != nil && $0.title.count <= 200 && $0.body.count <= 60000 }),
               meetings.allSatisfy({ ($0.weeklySchedule == nil || (!$0.weeklySchedule!.isEmpty && $0.weeklySchedule!.allSatisfy(\.isValid) && Set($0.weeklySchedule!.map(\.weekday)).count == $0.weeklySchedule!.count)) && ($0.weekdays == nil || (!$0.weekdays!.isEmpty && $0.weekdays!.allSatisfy { (1...7).contains($0) } && Set($0.weekdays!).count == $0.weekdays!.count)) && UUID(uuidString: $0.id) != nil && !$0.title.isEmpty && $0.title.count <= 200 && Dates.parse($0.startAt) != nil && Dates.parse($0.endAt) != nil && $0.end > $0.start && (0...120).contains($0.reminderMinutes) && TimeZone(identifier: $0.timezone) != nil }),
               TimeZone(identifier: settings.timezone) != nil,

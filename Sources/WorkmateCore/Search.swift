@@ -21,7 +21,7 @@ public extension Workspace {
         let noteIds = Set(matchingNotes.map(\.id))
         let matchingTasks = tasks.enumerated().filter { _, task in
             (includeArchived || !task.isArchived) &&
-                (matches(task.title) || noteIds.contains(task.noteId) || (task.meetingId.map { meetingIds.contains($0) } ?? false))
+                (matches(([task.title] + task.tagNames).joined(separator: " ")) || noteIds.contains(task.noteId) || (task.meetingId.map { meetingIds.contains($0) } ?? false))
         }.sorted {
             if $0.element.isArchived != $1.element.isArchived { return !$0.element.isArchived }
             return $0.element.priority.rank == $1.element.priority.rank ? $0.offset < $1.offset : $0.element.priority.rank > $1.element.priority.rank

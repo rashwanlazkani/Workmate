@@ -3,6 +3,7 @@ import WorkmateCore
 
 struct NoteChooser: View {
     @EnvironmentObject var store: WorkspaceStore
+    @Environment(\.dismiss) private var dismiss
     @ViewState<String> private var query = ""
     @ViewState<String?> private var selection: String?
     var choose: (String) -> Void
@@ -16,7 +17,7 @@ struct NoteChooser: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Your notes").font(.headline).padding(.horizontal, 4)
+            HStack { Text("Your notes").font(.headline); Spacer(); PopoverCloseButton { dismiss() } }.padding(.horizontal, 4)
             NativeSearchField(text: $query, placeholder: "Find a note", onSubmit: openSelection)
             if notes.isEmpty {
                 ContentUnavailableView.search(text: query).frame(height: 140)

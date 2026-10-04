@@ -48,6 +48,9 @@ typealias ViewState<Value> = SwiftUI.State<Value>
     func showWorkspace() { workspaceWindow.show() }
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
+        if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"), let icon = NSImage(contentsOf: iconURL) {
+            NSApp.applicationIconImage = icon
+        }
         NSApp.appearance = NSAppearance(named: .darkAqua)
         UNUserNotificationCenter.current().delegate = self
         let complete = UNNotificationAction(identifier: "complete", title: "Mark complete", options: [.foreground])
