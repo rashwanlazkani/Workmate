@@ -30,6 +30,61 @@ import Testing
         #expect(first.body.isEmpty)
         #expect(NoteFormatting.splitSection(original, at: rich.length).1.body.isEmpty)
     }
+    @Test func sectionMeetingTagsAreIndependentAndSearchable() throws {
+        let firstMeeting = Meeting(title: "PO-sync", start: Date(), end: Date().addingTimeInterval(3600))
+        let secondMeeting = Meeting(title: "Design review", start: Date(), end: Date().addingTimeInterval(3600))
+        var note = Note(title: "Meetings", body: "Original")
+        note.meetingIds = [firstMeeting.id]
+        // Existing sectioned notes migrate the old note tag to the first section only.
+        note.sections = [NoteSection(title: "Meetings", body: "Original"), NoteSection(title: "Design", body: "Mocks")]
+        var sections = note.contentSections
+        #expect(sections[0].meetingIds == [firstMeeting.id])
+        #expect((sections[1].meetingIds ?? []).isEmpty)
+        sections[1].meetingIds = [secondMeeting.id]
+        note.setSections(sections)
+        #expect(note.sections(for: firstMeeting.id).map(\.body) == ["Original"])
+        #expect(note.sections(for: secondMeeting.id).map(\.body) == ["Mocks"])
+        var workspace = Workspace(); workspace.notes = [note]; workspace.meetings = [firstMeeting, secondMeeting]
+        #expect(workspace.search("Design review").notes.map(\.id) == [note.id])
+        let decoded = try JSONDecoder().decode(Note.self, from: JSONEncoder().encode(note))
+        #expect(decoded.contentSections == sections)
+        let split = NoteFormatting.splitSection(sections[1], at: 2)
+        #expect(split.0.meetingIds == [secondMeeting.id]); #expect(split.1.meetingIds == [secondMeeting.id])
+        let merged = NoteFormatting.mergeSections(sections[0], sections[1])
+        #expect(Set(merged.meetingIds ?? []) == Set([firstMeeting.id, secondMeeting.id]))
+        sections[1].meetingIds = []; note.setSections(sections)
+        #expect(note.meetingIds == [firstMeeting.id])
+        #expect(note.sections(for: secondMeeting.id).isEmpty)
+    }
+    @Test func columnNameIsIndependentOfSectionHeadings() {
+        var note = Note(title: "SoS", body: "Agenda")
+        var sections = note.contentSections
+        sections.append(NoteSection(title: "PO-sync", body: "Release"))
+        note.setSections(sections)
+        note.title = "Meetings"
+        sections[1].body = "Updated release"
+        note.setSections(sections)
+        #expect(note.title == "Meetings")
+        #expect(note.contentSections.map(\.title) == ["SoS", "PO-sync"])
+        #expect(note.body.contains("SoS"))
+        var workspace = Workspace(); workspace.notes = [note]
+        #expect(workspace.search("SoS").notes.count == 1)
+    }
+    @Test func deletingASectionKeepsColumnAndOtherSections() {
+        var note = Note(title: "Meetings")
+        let first = NoteSection(title: "SoS", body: "Keep this", meetingIds: [UUID().uuidString.lowercased()])
+        let second = NoteSection(title: "PO-sync", body: "Remove this", meetingIds: [UUID().uuidString.lowercased()])
+        note.setSections([first, second]); note.removeSection(second.id)
+        #expect(note.title == "Meetings")
+        #expect(note.contentSections == [first])
+        #expect(note.meetingIds == first.meetingIds)
+        #expect(!note.body.contains("Remove this"))
+        note.removeSection(first.id)
+        #expect(note.title == "Meetings")
+        #expect(note.contentSections.count == 1)
+        #expect(note.body.isEmpty)
+        #expect(note.meetingIds == [])
+    }
     @Test func legacyNotesAndDuplicateSectionValidation() throws {
         let note = Note(title: "Legacy", body: "Keep this")
         let decoded = try JSONDecoder().decode(Note.self, from: JSONEncoder().encode(note))

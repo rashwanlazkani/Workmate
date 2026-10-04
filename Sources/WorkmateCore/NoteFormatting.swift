@@ -6,30 +6,44 @@ public enum NoteFormatting {
         let index = min(max(0, location), text.length)
         let before = text.attributedSubstring(from: NSRange(location: 0, length: index))
         let after = text.attributedSubstring(from: NSRange(location: index, length: text.length - index))
-        return (NoteSection(id: section.id, title: section.title, body: before.string, richText: encode(before)),
-                NoteSection(body: after.string, richText: encode(after)))
+        return (NoteSection(id: section.id, title: section.title, body: before.string, richText: encode(before), meetingIds: section.meetingIds),
+                NoteSection(body: after.string, richText: encode(after), meetingIds: section.meetingIds))
     }
     public static func mergeSections(_ first: NoteSection, _ second: NoteSection) -> NoteSection {
         let text = NSMutableAttributedString(attributedString: decode(body: first.body, richText: first.richText))
         if text.length > 0 { text.append(NSAttributedString(string: "\n\n", attributes: attributes)) }
         if !second.title.isEmpty {
-            var heading = attributes; heading[.font] = NSFont.boldSystemFont(ofSize: 14)
+            var heading = attributes; heading[.font] = NSFont.boldSystemFont(ofSize: 17)
             text.append(NSAttributedString(string: second.title + "\n", attributes: heading))
         }
         text.append(decode(body: second.body, richText: second.richText))
-        return NoteSection(id: first.id, title: first.title, body: text.string, richText: encode(text))
+        return NoteSection(id: first.id, title: first.title, body: text.string, richText: encode(text), meetingIds: Array(Set((first.meetingIds ?? []) + (second.meetingIds ?? []))).sorted())
     }
     public enum ListKind: Equatable { case bullet, numbered, checklist }
     public static var attributes: [NSAttributedString.Key: Any] {
         let paragraph = NSMutableParagraphStyle(); paragraph.lineSpacing = 7
-        return [.font: NSFont.systemFont(ofSize: 14), .foregroundColor: NSColor.white, .paragraphStyle: paragraph]
+        return [.font: NSFont.systemFont(ofSize: 17), .foregroundColor: NSColor.white, .paragraphStyle: paragraph]
     }
     public static func decode(body: String, richText: String?) -> NSAttributedString {
         if let richText, let data = Data(base64Encoded: richText), data.count <= 600000,
            let value = NSAttributedString(rtf: data, documentAttributes: nil), value.string == body {
-            return value
+            return readable(value)
         }
-        return NSAttributedString(string: body, attributes: attributes)
+        return readable(NSAttributedString(string: body, attributes: attributes))
+    }
+    public static func readable(_ text: NSAttributedString) -> NSAttributedString {
+        let result = NSMutableAttributedString(attributedString: text)
+        let full = NSRange(location: 0, length: result.length)
+        result.enumerateAttribute(.font, in: full) { value, range, _ in
+            let font = value as? NSFont ?? NSFont.systemFont(ofSize: 17)
+            if font.pointSize < 17 { result.addAttribute(.font, value: NSFontManager.shared.convert(font, toSize: 17), range: range) }
+        }
+        let regex = try! NSRegularExpression(pattern: "(?m)^(?:[•☐☑]|[0-9]+\\.)")
+        for match in regex.matches(in: result.string, range: full) {
+            let font = result.attribute(.font, at: match.range.location, effectiveRange: nil) as? NSFont ?? .systemFont(ofSize: 17)
+            result.addAttribute(.font, value: NSFontManager.shared.convert(font, toSize: max(21, font.pointSize)), range: match.range)
+        }
+        return result
     }
     public static func encode(_ text: NSAttributedString) -> String? {
         text.rtf(from: NSRange(location: 0, length: text.length), documentAttributes: [:])?.base64EncodedString()
@@ -77,7 +91,7 @@ public enum NoteFormatting {
     public static func selectionStyle(_ text: NSAttributedString, selection: NSRange, typingAttributes: [NSAttributedString.Key: Any]) -> SelectionStyle {
         var style = SelectionStyle()
         func hasTrait(_ attributes: [NSAttributedString.Key: Any], _ trait: NSFontTraitMask) -> Bool {
-            NSFontManager.shared.traits(of: attributes[.font] as? NSFont ?? .systemFont(ofSize: 14)).contains(trait)
+            NSFontManager.shared.traits(of: attributes[.font] as? NSFont ?? .systemFont(ofSize: 17)).contains(trait)
         }
         let start = min(selection.location, text.length), count = min(selection.length, text.length - start)
         if count == 0 {
@@ -134,6 +148,6 @@ public enum NoteFormatting {
             }
             start = moved(start); end = moved(end)
         }
-        return (result, NSRange(location: start, length: max(0, end - start)))
+        return (readable(result), NSRange(location: start, length: max(0, end - start)))
     }
 }

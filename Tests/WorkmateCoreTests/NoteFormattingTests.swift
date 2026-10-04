@@ -62,6 +62,14 @@ import Testing
         let caret = NoteFormatting.selectionStyle(text, selection: NSRange(location: text.length, length: 0), typingAttributes: [.font: NSFont.boldSystemFont(ofSize: 14)])
         #expect(caret.bold); #expect(caret.list == .checklist)
     }
+    @Test func existingNotesUseLargerTextAndListMarkers() throws {
+        let text = NSMutableAttributedString(string: "• Bullet\n1. Number\n☐ Check", attributes: [.font: NSFont.boldSystemFont(ofSize: 14)])
+        let readable = NoteFormatting.readable(text)
+        #expect(readable.string == text.string)
+        #expect((readable.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.pointSize == 21)
+        #expect((readable.attribute(.font, at: 2, effectiveRange: nil) as? NSFont)?.pointSize == 17)
+        #expect(NSFontManager.shared.traits(of: try #require(readable.attribute(.font, at: 2, effectiveRange: nil) as? NSFont)).contains(.boldFontMask))
+    }
     @Test func linksAcceptWebAndMailAndRejectExecutableSchemes() {
         #expect(NoteFormatting.safeLink("example.com")?.absoluteString == "https://example.com")
         #expect(NoteFormatting.safeLink("mailto:hello@example.com") != nil)

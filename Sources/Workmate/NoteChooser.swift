@@ -6,6 +6,8 @@ struct NoteChooser: View {
     @Environment(\.dismiss) private var dismiss
     @ViewState<String> private var query = ""
     @ViewState<String?> private var selection: String?
+    @ViewState<Note?> private var deletingNote: Note?
+    @ViewState<Bool> private var confirmDelete = false
     var choose: (String) -> Void
 
     private var notes: [Note] {
@@ -41,6 +43,11 @@ struct NoteChooser: View {
                             .tag(note.id).onTapGesture { choose(note.id) }
                             .accessibilityAddTraits(.isButton)
                             .accessibilityAction { choose(note.id) }
+                            .contextMenu {
+                                Button("Open note") { choose(note.id) }
+                                Divider()
+                                Button("Delete note…", role: .destructive) { deletingNote = note; confirmDelete = true }
+                            }
                     }
                 }.listStyle(.plain).scrollContentBackground(.hidden)
                     .frame(height: min(CGFloat(notes.count) * 61 + 8, 280))
@@ -51,6 +58,13 @@ struct NoteChooser: View {
                 Label("New note", systemImage: "square.and.pencil").frame(maxWidth: .infinity, alignment: .leading)
             }.modernButtonStyle().padding(.horizontal, 4)
         }.padding(16).frame(width: 330).popoverSurface()
+            .confirmationDialog("Delete this note?", isPresented: $confirmDelete) {
+                Button("Delete note", role: .destructive) {
+                    if let note = deletingNote { store.deleteNote(note.id) }
+                    deletingNote = nil
+                }
+                Button("Cancel", role: .cancel) { deletingNote = nil }
+            } message: { Text("The note and all its sections will be removed. Its tasks stay saved.") }
             .onChange(of: query) { _, _ in selection = notes.first?.id }
     }
 }

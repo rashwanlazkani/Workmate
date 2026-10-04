@@ -18,6 +18,9 @@ struct DriveCloudTests {
         meeting.timezone = "Europe/Stockholm"; meeting.reminderEnabled = false
         meeting.scheduleWeekly(with: [.init(weekday: 2, startTime: "09:00", endTime: "10:00"), .init(weekday: 4, startTime: "13:00", endTime: "14:30")])
         workspace.meetings = [meeting]
+        var sections = workspace.notes[0].contentSections
+        sections[1].meetingIds = [meeting.id]
+        workspace.notes[0].setSections(sections)
         let saved = try await api.save(workspace)
         #expect(saved.revision == workspace.revision + 1)
         #expect(try await api.load().notes == workspace.notes)

@@ -159,6 +159,7 @@ struct TaskRow: View {
     @EnvironmentObject var store: WorkspaceStore
     var task: WorkTask
     @ViewState<Bool> private var edit = false
+    @ViewState<Bool> private var confirmDelete = false
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Button { store.toggleTask(task) } label: {
@@ -209,7 +210,13 @@ struct TaskRow: View {
             Button("Edit task…") { edit = true }
             Menu("Priority") { ForEach(Priority.allCases) { p in Button(p.title) { store.updateTask(task.id) { $0.priority = p } } } }
             Button("Remind in 1 hour") { store.updateTask(task.id) { $0.reminder = Date().addingTimeInterval(3600) } }
+            Divider()
+            Button("Delete task…", role: .destructive) { confirmDelete = true }
         }
+        .confirmationDialog("Delete this task?", isPresented: $confirmDelete) {
+            Button("Delete task", role: .destructive) { store.deleteTask(task.id) }
+            Button("Cancel", role: .cancel) { }
+        } message: { Text("“\(task.title)” and its reminder will be removed. Your notes stay saved.") }
     }
 }
 

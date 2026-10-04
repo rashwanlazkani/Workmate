@@ -209,7 +209,6 @@ struct NoteColumn: View {
     @ViewState<String?> private var newSectionID: String?
     @ViewState<Bool> private var chooseNote = false
     @ViewState<Bool> private var confirmDelete = false
-    @ViewState<Meeting?> private var newMeeting: Meeting?
     @FocusState private var titleFocused: Bool
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -231,36 +230,17 @@ struct NoteColumn: View {
             }.padding(.bottom, 22)
             TextField("Untitled note", text: Binding(get: { note.title }, set: { store.updateNote(note.id, title: $0) }))
                 .textFieldStyle(.plain).font(.system(size: 25, weight: .medium)).focused($titleFocused)
-                .accessibilityLabel("Note title").padding(.bottom, 15)
+                .accessibilityLabel(note.contentSections.count > 1 ? "Column name" : "Note title")
+                .help("Name this column independently of its section headings").padding(.bottom, 15)
                 .focusOnEntry($titleFocused, when: store.activeColumn == note.id)
-            let linkedMeetings = store.workspace.meetings.filter { (note.meetingIds ?? []).contains($0.id) }
-            if !linkedMeetings.isEmpty {
-                ScrollView(.horizontal) {
-                    HStack(spacing: 7) {
-                        ForEach(linkedMeetings) { meeting in
-                            Button { store.focusMeeting(meeting.id) } label: {
-                                Label(meeting.title, systemImage: "calendar")
-                                    .font(.system(size: 11, weight: .medium)).lineLimit(1)
-                                    .padding(.horizontal, 10).padding(.vertical, 6)
-                                    .foregroundStyle(Palette.accent)
-                                    .background(Palette.accent.opacity(0.10), in: Capsule())
-                                    .contentShape(Capsule())
-                            }.buttonStyle(.plain).accessibilityLabel("Meeting: \(meeting.title)")
-                                .help("Open \(meeting.title)")
-                                .contextMenu {
-                                    Button("Unlink from this note") { store.linkNote(note.id, to: meeting) }
-                                }
-                        }
-                    }
-                }.scrollIndicators(.hidden).frame(height: 30).padding(.bottom, 14)
-            }
             GeometryReader { geometry in
                 ScrollViewReader { proxy in
                     ScrollView(.vertical) {
                         VStack(alignment: .leading, spacing: 0) {
-                            ForEach(Array(note.contentSections.enumerated()), id: \.element.id) { index, section in
+                            ForEach(Array(note.sections(for: store.meetingFocusID).enumerated()), id: \.element.id) { index, section in
                                 if index > 0 { Rectangle().fill(Palette.line).frame(height: 1).padding(.vertical, 24) }
-                                NoteSectionEditor(noteID: note.id, section: section, first: index == 0,
+                                NoteSectionEditor(noteID: note.id, section: section, first: section.id == note.contentSections.first?.id,
+                                                  showHeading: note.contentSections.count > 1,
                                                   minimumHeight: note.contentSections.count == 1 ? max(180, geometry.size.height - 80) : 200,
                                                   autofocus: newSectionID == section.id, selected: $selected,
                                                   added: { newSectionID = $0 })
@@ -283,26 +263,6 @@ struct NoteColumn: View {
                 }
             }
             HStack {
-                Group {
-                    let meetings = store.workspace.meetings.filter { !$0.canceled }
-                    if meetings.isEmpty {
-                        Button(action: beginMeeting) { meetingControlLabel }.buttonStyle(.plain)
-                    } else {
-                        Menu {
-                            ForEach(meetings) { meeting in
-                                Button { store.linkNote(note.id, to: meeting) } label: {
-                                    Label(meeting.title, systemImage: (note.meetingIds ?? []).contains(meeting.id) ? "checkmark" : "calendar")
-                                }
-                            }
-                            Divider()
-                            Button(action: beginMeeting) { Label("New meeting…", systemImage: "plus") }
-                        } label: { meetingControlLabel }
-                        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-                    }
-                }.help("Link this note to a meeting")
-                    .popover(item: $newMeeting, arrowEdge: .top) { draft in
-                        MeetingEditor(meeting: draft, linkingNoteID: note.id).environmentObject(store)
-                    }
                 Spacer()
                 if !selected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !extractActions(note.body).isEmpty {
                     Button { store.addActions(from: note, selected: selected); selected = "" } label: { Label("Make action", systemImage: "arrow.up.right") }
@@ -315,13 +275,5 @@ struct NoteColumn: View {
         .confirmationDialog("Delete “\(note.displayTitle)”?", isPresented: $confirmDelete) {
             Button("Delete note", role: .destructive) { store.deleteNote(note.id) }
         } message: { Text("Its tasks will stay in Next.") }
-    }
-    private var meetingControlLabel: some View {
-        Label("Meeting", systemImage: "tag").font(.system(size: 11)).foregroundStyle(Palette.accent)
-            .contentShape(Rectangle())
-    }
-    private func beginMeeting() {
-        let start = Calendar.current.nextDate(after: Date(), matching: DateComponents(minute: 0), matchingPolicy: .nextTime) ?? Date().addingTimeInterval(3600)
-        newMeeting = Meeting(title: "", start: start, end: start.addingTimeInterval(3600))
     }
 }

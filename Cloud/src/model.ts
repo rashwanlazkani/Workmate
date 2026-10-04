@@ -34,6 +34,7 @@ export const taskSchema = z.object({
   completedAt: z.string().optional(),
 });
 export const noteSectionSchema = z.object({
+  meetingIds: z.array(z.string().uuid()).max(500).optional(),
   id: z.string().uuid(),
   title: z.string().max(200),
   body: z.string().max(60000),

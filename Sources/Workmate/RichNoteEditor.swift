@@ -22,7 +22,7 @@ import WorkmateCore
         focus()
         let selected = editor.selectedRange(), fonts = NSFontManager.shared
         if selected.length == 0 {
-            let current = editor.typingAttributes[.font] as? NSFont ?? .systemFont(ofSize: 14)
+            let current = editor.typingAttributes[.font] as? NSFont ?? .systemFont(ofSize: 17)
             editor.typingAttributes[.font] = fonts.traits(of: current).contains(trait) ? fonts.convert(current, toNotHaveTrait: trait) : fonts.convert(current, toHaveTrait: trait)
             refreshSelectionStyle()
             return
@@ -30,10 +30,10 @@ import WorkmateCore
         let next = NSMutableAttributedString(attributedString: editor.attributedString())
         var allHaveTrait = true
         next.enumerateAttribute(.font, in: selected) { value, _, _ in
-            if !fonts.traits(of: value as? NSFont ?? .systemFont(ofSize: 14)).contains(trait) { allHaveTrait = false }
+            if !fonts.traits(of: value as? NSFont ?? .systemFont(ofSize: 17)).contains(trait) { allHaveTrait = false }
         }
         next.enumerateAttribute(.font, in: selected) { value, range, _ in
-            let font = value as? NSFont ?? .systemFont(ofSize: 14)
+            let font = value as? NSFont ?? .systemFont(ofSize: 17)
             next.addAttribute(.font, value: allHaveTrait ? fonts.convert(font, toNotHaveTrait: trait) : fonts.convert(font, toHaveTrait: trait), range: range)
         }
         apply(next, selection: selected, name: trait == .boldFontMask ? "Bold" : "Italic")
@@ -96,18 +96,18 @@ struct NoteFormattingToolbar: View {
         HStack(spacing: 3) {
             formatButton("Bold · ⌘B", icon: "bold", active: controller.selectionStyle.bold) { controller.toggleFont(.boldFontMask) }
             formatButton("Italic · ⌘I", icon: "italic", active: controller.selectionStyle.italic) { controller.toggleFont(.italicFontMask) }
-            Rectangle().fill(Palette.line).frame(width: 1, height: 15).padding(.horizontal, 4)
+            Rectangle().fill(Palette.line).frame(width: 1, height: 20).padding(.horizontal, 2)
             formatButton("Bulleted list", icon: "list.bullet", active: controller.selectionStyle.list == .bullet) { controller.list(.bullet) }
             formatButton("Numbered list", icon: "list.number", active: controller.selectionStyle.list == .numbered) { controller.list(.numbered) }
             formatButton("Checklist", icon: "checklist", active: controller.selectionStyle.list == .checklist) { controller.list(.checklist) }
-            Rectangle().fill(Palette.line).frame(width: 1, height: 15).padding(.horizontal, 4)
+            Rectangle().fill(Palette.line).frame(width: 1, height: 20).padding(.horizontal, 2)
             formatButton("Add link · ⌘K", icon: "link", active: controller.selectionStyle.linked) { controller.beginLink() }
                 .popover(isPresented: $controller.linkShown, arrowEdge: .bottom) { NoteLinkPopover(controller: controller) }
             Spacer(minLength: 0)
         }.padding(.bottom, 12)
     }
     private func formatButton(_ label: String, icon: String, active: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) { Image(systemName: icon).font(.system(size: 12, weight: .medium)).frame(width: 28, height: 27).contentShape(RoundedRectangle(cornerRadius: 6)) }
+        Button(action: action) { Image(systemName: icon).font(.system(size: 18, weight: .medium)).frame(width: 34, height: 36).contentShape(RoundedRectangle(cornerRadius: 6)) }
             .buttonStyle(.plain)
             .foregroundStyle(active ? Palette.accent : Color.secondary)
             .background(active ? Palette.accent.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
@@ -198,7 +198,7 @@ struct NativeNoteEditor: NSViewRepresentable {
         scroll.drawsBackground = false; scroll.hasVerticalScroller = true; scroll.autohidesScrollers = true
         let editor = RichNoteTextView()
         editor.isRichText = true; editor.importsGraphics = false; editor.drawsBackground = false
-        editor.font = .systemFont(ofSize: 14); editor.textColor = .white
+        editor.font = .systemFont(ofSize: 17); editor.textColor = .white
         editor.insertionPointColor = NSColor(Palette.accent)
         editor.linkTextAttributes = [.foregroundColor: NSColor(Palette.accent), .underlineStyle: NSUnderlineStyle.single.rawValue]
         editor.textContainerInset = NSSize(width: 0, height: 4); editor.textContainer?.lineFragmentPadding = 0
@@ -241,6 +241,10 @@ struct NativeNoteEditor: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard !applying, let editor = notification.object as? NSTextView else { return }
             editor.textStorage?.addAttribute(.foregroundColor, value: NSColor.white, range: NSRange(location: 0, length: editor.attributedString().length))
+            let readable = NoteFormatting.readable(editor.attributedString())
+            readable.enumerateAttribute(.font, in: NSRange(location: 0, length: readable.length)) { value, range, _ in
+                if let value { editor.textStorage?.addAttribute(.font, value: value, range: range) }
+            }
             let encoded = NoteFormatting.encode(editor.attributedString())
             lastRichText = encoded
             (editor as? RichNoteTextView)?.updateContentHeight()

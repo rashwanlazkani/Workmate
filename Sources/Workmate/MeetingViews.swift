@@ -71,6 +71,7 @@ struct MeetingEditor: View {
     @Environment(\.dismiss) private var dismiss
     @ViewState<Meeting> var meeting: Meeting
     var linkingNoteID: String? = nil
+    var linkingSectionID: String? = nil
     @ViewState<Bool> private var removing = false
     private var start: Binding<Date> { Binding(get: { meeting.start }, set: { value in
         let duration = meeting.end.timeIntervalSince(meeting.start)
@@ -228,7 +229,7 @@ struct MeetingEditor: View {
     }
     private func save() {
         guard !meeting.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, meeting.end > meeting.start else { return }
-        store.saveMeeting(meeting, linkingNoteID: linkingNoteID); dismiss()
+        store.saveMeeting(meeting, linkingNoteID: linkingNoteID, linkingSectionID: linkingSectionID); dismiss()
     }
     private func scheduleChoice(_ title: String, value: String) -> some View {
         Button {

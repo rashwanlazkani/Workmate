@@ -84,9 +84,10 @@ public struct NoteSection: Codable, Identifiable, Equatable, Sendable {
     public var id: String
     public var title: String
     public var body: String
+    public var meetingIds: [String]?
     public var richText: String?
-    public init(id: String = UUID().uuidString.lowercased(), title: String = "", body: String = "", richText: String? = nil) {
-        self.id = id; self.title = title; self.body = body; self.richText = richText
+    public init(id: String = UUID().uuidString.lowercased(), title: String = "", body: String = "", richText: String? = nil, meetingIds: [String]? = nil) {
+        self.id = id; self.title = title; self.body = body; self.richText = richText; self.meetingIds = meetingIds
     }
 }
 
@@ -102,24 +103,37 @@ public struct Note: Codable, Identifiable, Equatable, Sendable {
     public var meetingIds: [String]? = []
     public init(title: String = "", body: String = "") { self.title = title; self.body = body }
     public var contentSections: [NoteSection] {
-        if let sections, !sections.isEmpty { return sections }
-        return [NoteSection(id: id, title: title, body: body, richText: richText)]
+        if var sections, !sections.isEmpty {
+            // Old note-level tags belong to the original first section.
+            if sections.allSatisfy({ $0.meetingIds == nil }) { sections[0].meetingIds = meetingIds ?? [] }
+            return sections
+        }
+        return [NoteSection(id: id, title: title, body: body, richText: richText, meetingIds: meetingIds ?? [])]
     }
     public mutating func setSections(_ values: [NoteSection]) {
-        guard let first = values.first else { return }
+        guard !values.isEmpty else { return }
         sections = values
-        title = first.title
+        meetingIds = Array(Set(values.flatMap { $0.meetingIds ?? [] })).sorted()
         // Keep a plain-text projection for search, AI, task extraction and older backups.
         body = values.enumerated().map { index, section in
-            index == 0 || section.title.isEmpty ? section.body : section.title + "\n" + section.body
+            values.count == 1 || section.title.isEmpty ? section.body : section.title + "\n" + section.body
         }.joined(separator: "\n\n")
         richText = nil
         updatedAt = Dates.iso()
     }
+    public mutating func removeSection(_ sectionID: String) {
+        var remaining = contentSections.filter { $0.id != sectionID }
+        if remaining.isEmpty { remaining = [NoteSection(meetingIds: [])] }
+        setSections(remaining)
+    }
+    public func sections(for meetingID: String?) -> [NoteSection] {
+        guard let meetingID else { return contentSections }
+        return contentSections.filter { ($0.meetingIds ?? []).contains(meetingID) }
+    }
     public var validSections: Bool {
         guard let sections else { return true }
         return !sections.isEmpty && sections.count <= 50 && Set(sections.map(\.id)).count == sections.count && sections.allSatisfy {
-            UUID(uuidString: $0.id) != nil && $0.title.count <= 200 && $0.body.count <= 60000 && ($0.richText?.count ?? 0) <= 800000
+            UUID(uuidString: $0.id) != nil && $0.title.count <= 200 && $0.body.count <= 60000 && ($0.richText?.count ?? 0) <= 800000 && ($0.meetingIds?.count ?? 0) <= 500 && ($0.meetingIds ?? []).allSatisfy { UUID(uuidString: $0) != nil }
         }
     }
     public var displayTitle: String { title.isEmpty ? String(body.split(separator: "\n").first ?? "Untitled note").prefixString(60) : title }

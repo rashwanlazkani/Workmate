@@ -192,7 +192,7 @@ import WorkmateCore
             guard let i = w.notes.firstIndex(where: { $0.id == id }) else { return }
             if let title {
                 w.notes[i].title = String(title.prefix(200))
-                if var sections = w.notes[i].sections, !sections.isEmpty {
+                if var sections = w.notes[i].sections, sections.count == 1 {
                     sections[0].title = w.notes[i].title; w.notes[i].setSections(sections)
                 }
             }
@@ -232,10 +232,17 @@ import WorkmateCore
             if let splitAt {
                 let pair = NoteFormatting.splitSection(sections[index], at: splitAt)
                 sections[index] = pair.0; added = pair.1
-            } else { added = NoteSection() }
+            } else { added = NoteSection(meetingIds: meetingFocusID.map { [$0] } ?? []) }
             sections.insert(added, at: index + 1); addedID = added.id
         }
         return saved ? addedID : nil
+    }
+    func removeSection(_ noteID: String, sectionID: String) {
+        change { workspace in
+            if let index = workspace.notes.firstIndex(where: { $0.id == noteID }) {
+                workspace.notes[index].removeSection(sectionID)
+            }
+        }
     }
     func mergeSection(_ noteID: String, sectionID: String) {
         editSections(noteID) { sections in
@@ -511,16 +518,20 @@ extension WorkspaceStore {
         NSApp.activate(ignoringOtherApps: true)
         NSApp.windows.first { $0.title == "Workmate" }?.makeKeyAndOrderFront(nil)
     }
-    func saveMeeting(_ meeting: Meeting, linkingNoteID: String? = nil) {
+    func saveMeeting(_ meeting: Meeting, linkingNoteID: String? = nil, linkingSectionID: String? = nil) {
         var meeting = meeting
         meeting.title = String(meeting.title.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
         change { w in
             if let i = w.meetings.firstIndex(where: { $0.id == meeting.id }) { w.meetings[i] = meeting }
             else { w.meetings.append(meeting) }
             if let linkingNoteID, let index = w.notes.firstIndex(where: { $0.id == linkingNoteID }) {
-                var ids = w.notes[index].meetingIds ?? []
-                if !ids.contains(meeting.id) { ids.append(meeting.id) }
-                w.notes[index].meetingIds = ids
+                var sections = w.notes[index].contentSections
+                if let sectionIndex = sections.firstIndex(where: { $0.id == linkingSectionID }) ?? sections.indices.first {
+                    var ids = sections[sectionIndex].meetingIds ?? []
+                    if !ids.contains(meeting.id) { ids.append(meeting.id) }
+                    sections[sectionIndex].meetingIds = ids
+                    w.notes[index].setSections(sections)
+                }
             }
         }
         if meeting.reminderEnabled { requestNotificationsIfNeeded() }
@@ -530,11 +541,15 @@ extension WorkspaceStore {
         Task { await enableNotifications() }
     }
     func linkNote(_ id: String, to meeting: Meeting) {
-        change { w in
-            guard let i = w.notes.firstIndex(where: { $0.id == id }) else { return }
-            var ids = w.notes[i].meetingIds ?? []
+        guard let sectionID = workspace.notes.first(where: { $0.id == id })?.contentSections.first?.id else { return }
+        linkSection(id, sectionID: sectionID, to: meeting)
+    }
+    func linkSection(_ noteID: String, sectionID: String, to meeting: Meeting) {
+        editSections(noteID) { sections in
+            guard let index = sections.firstIndex(where: { $0.id == sectionID }) else { return }
+            var ids = sections[index].meetingIds ?? []
             if ids.contains(meeting.id) { ids.removeAll { $0 == meeting.id } } else { ids.append(meeting.id) }
-            w.notes[i].meetingIds = ids
+            sections[index].meetingIds = ids
         }
     }
     func linkedNotes(for meeting: Meeting) -> [Note] { workspace.notes.filter { ($0.meetingIds ?? []).contains(meeting.id) } }
