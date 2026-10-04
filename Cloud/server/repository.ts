@@ -1,4 +1,5 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import type { Workspace } from "../src/model";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
@@ -102,11 +103,7 @@ export class DynamoRepository implements Repository {
         previous.value.revision !== expectedRevision
       )
         throw new Conflict();
-      const w = value as {
-        revision: number;
-        tasks: { id: string; status: string; remindAt: string; telegramReminder?: boolean }[];
-        settings: unknown;
-      };
+      const w = value as Workspace;
       const version = randomUUID();
       const chunks = encodeSnapshot(value);
       newKeys = chunks.map((_, i) => `CHUNK#${key}#${version}#${i}`);
@@ -158,6 +155,12 @@ export class DynamoRepository implements Repository {
           telegramReminder: t.telegramReminder ?? Boolean(t.remindAt),
         })),
         settings: w.settings,
+        notificationFingerprint: createHash("sha256").update(JSON.stringify({
+          tasks: w.tasks.map(t => [t.id, t.status, t.remindAt, t.telegramReminder]),
+          settings: [w.settings.digestEnabled, w.settings.digestTime, w.settings.timezone],
+          meetings: (w.meetings ?? []).map(m => [m.id, m.startAt, m.endAt, m.timezone, m.canceled,
+            m.reminderEnabled, m.reminderMinutes, m.recurrence, m.weekdays, m.weeklySchedule]),
+        })).digest("hex"),
       };
     }
     try {

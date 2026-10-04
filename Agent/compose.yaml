@@ -14,6 +14,7 @@ services:
     volumes:
       - ./data:/data
       - ./connection.json:/run/secrets/connection.json:ro
+      - ./credentials:/run/secrets/mqtt:ro
     tmpfs:
       - /tmp:size=8m,mode=1777
     logging:

@@ -1,4 +1,6 @@
 FROM python:3.13-slim
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 RUN groupadd --gid 1000 workmate && useradd --uid 1000 --gid 1000 --no-create-home workmate
 WORKDIR /app
 COPY agent.py /app/agent.py

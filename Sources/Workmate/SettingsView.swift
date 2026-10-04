@@ -92,7 +92,7 @@ struct SettingsView: View {
                     Divider()
                     DisclosureGroup(isExpanded: $cloudOpen) {
                         VStack(alignment: .leading, spacing: 13) {
-                            Text("A second copy in private S3 storage in Stockholm. Your iCloud files remain the main workspace. Your Raspberry Pi checks this copy to deliver Telegram reminders while Workmate is closed.")
+                            Text("A second copy in private S3 storage in Stockholm. Your iCloud files remain the main workspace. Schedule changes are pushed to your Raspberry Pi, which delivers Telegram reminders while Workmate is closed.")
                                 .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                             if store.driveConfiguration.serviceToken != nil {
                                 Toggle("Keep an AWS backup", isOn: Binding(get: { store.driveConfiguration.backupEnabled }, set: { enabled in
@@ -100,9 +100,8 @@ struct SettingsView: View {
                                     if enabled { Task { await store.backUpNow() } }
                                 })).toggleStyle(.switch).controlSize(.small)
                                 if let seen = store.telegram.agentLastSeen.flatMap({ WorkmateCore.Dates.parse($0) }) {
-                                    let online = Date().timeIntervalSince(seen) < 180
-                                    Label(online ? "Raspberry Pi · Online" : "Raspberry Pi · Last seen " + seen.formatted(date: .omitted, time: .shortened), systemImage: online ? "checkmark.circle.fill" : "exclamationmark.circle")
-                                        .font(.system(size: 11)).foregroundStyle(online ? Palette.accent : .orange)
+                                    Label("Pi schedule synced " + seen.formatted(date: .abbreviated, time: .shortened), systemImage: "arrow.triangle.2.circlepath")
+                                        .font(.system(size: 11)).foregroundStyle(.secondary)
                                 }
                                 if store.isCloud {
                                     HStack {

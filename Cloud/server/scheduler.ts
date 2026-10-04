@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 import { dateKey, notifiesTelegram, type Workspace } from "../src/model";
 import { DynamoRepository, SecretVault } from "./repository";
 import { Service, userHash } from "./service";
+import { publishScheduleChange } from "./push";
 const client = new SchedulerClient({});
 export const scheduleName = (user: string, id: string) =>
   "wm-" +
@@ -133,6 +134,14 @@ export async function planner(event: DynamoDBStreamEvent) {
             },
           });
         } else await remove(name);
+      }
+      // Stream delivery is retried if publish fails. Duplicate events are harmless:
+      // the Pi coalesces them and reads the latest authoritative plan once.
+      const before = old as (Workspace & { notificationFingerprint?: string }) | undefined;
+      const after = next as Workspace & { notificationFingerprint?: string };
+      if (!before || before.notificationFingerprint !== after.notificationFingerprint ||
+          (!after.notificationFingerprint && JSON.stringify([before.tasks, before.settings]) !== JSON.stringify([after.tasks, after.settings]))) {
+        await publishScheduleChange(user, next.revision);
       }
     } catch (e) {
       console.error("Schedule reconciliation failed", {

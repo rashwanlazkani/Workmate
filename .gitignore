@@ -11,5 +11,6 @@ cdk-outputs.json
 *.app/
 Agent/data/
 Agent/connection.json
+Agent/credentials/
 __pycache__/
 *.pyc

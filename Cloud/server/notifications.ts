@@ -25,9 +25,10 @@ export function localClock(day: DateTime, time: string) {
 }
 export function notificationPlan(w: Workspace, now = Date.now()): NotificationJob[] {
   const jobs: NotificationJob[] = [];
-  const horizon = now + 8 * 86400000;
   const add = (draft: Draft) => {
-    if (Date.parse(draft.fireAt) < horizon && Date.parse(draft.expiresAt) > now) jobs.push(job(draft));
+    // Keep distant one-time reminders too. The Pi sleeps until their fire time,
+    // without needing a periodic refresh to discover them later.
+    if (Date.parse(draft.expiresAt) > now) jobs.push(job(draft));
   };
   for (const task of w.tasks) {
     if (task.status === "done" || !notifiesTelegram(task) || !task.remindAt) continue;
@@ -53,14 +54,16 @@ export function notificationPlan(w: Workspace, now = Date.now()): NotificationJo
     };
     if (meeting.recurrence !== "weekly") { occurrence(anchor, anchorEnd); continue; }
     const rules = meeting.weeklySchedule ?? (meeting.weekdays ?? [weekday(anchor)]).map(day => ({ weekday: day, startTime: anchor.toFormat("HH:mm"), endTime: anchorEnd.toFormat("HH:mm") }));
-    const today = DateTime.fromMillis(now, { zone: meeting.timezone }).startOf("day");
+    const today = DateTime.max(DateTime.fromMillis(now, { zone: meeting.timezone }).startOf("day"), anchor.startOf("day"));
     for (let offset = -1; offset <= 9; offset++) {
       const day = today.plus({ days: offset });
       const rule = rules.find(r => r.weekday === weekday(day));
       if (!rule) continue;
       const start = localClock(day, rule.startTime);
       const endDay = rule.endTime <= rule.startTime ? day.plus({ days: 1 }) : day;
-      occurrence(start, localClock(endDay, rule.endTime));
+      if (start.minus({ minutes: meeting.reminderMinutes }).toMillis() < Math.max(now, anchor.toMillis()) + 8 * 86400000) {
+        occurrence(start, localClock(endDay, rule.endTime));
+      }
     }
   }
   return jobs.sort((a, b) => a.fireAt.localeCompare(b.fireAt));
