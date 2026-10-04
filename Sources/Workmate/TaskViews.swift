@@ -205,6 +205,8 @@ struct TaskRow: View {
                 }
             }
         }.padding(.vertical, 12).padding(.horizontal, 2)
+        .background(store.highlightedActionID == task.id ? Palette.accent.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+        .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(store.highlightedActionID == task.id ? Palette.accent.opacity(0.75) : Color.clear) .allowsHitTesting(false) }
         .contextMenu {
             Button(task.isArchived ? "Restore to Next" : "Complete and archive") { store.toggleTask(task) }
             Button("Edit task…") { edit = true }

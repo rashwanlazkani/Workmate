@@ -14,6 +14,8 @@ import WorkmateCore
     @Published private(set) var driveConfiguration = DriveConfiguration()
     @Published var error: String?
     @Published var message: String?
+    @Published private(set) var highlightedActionID: String?
+    private var actionHighlightMonitor: Any?
     @Published var account = "local"
     @Published var email = ""
     @Published var telegram = TelegramStatus.empty
@@ -256,9 +258,28 @@ import WorkmateCore
         let existing = Set(workspace.tasks.filter { $0.noteId == note.id }.map(\.title))
         var seen = existing
         let fresh = candidates.filter { seen.insert(String($0.prefix(500))).inserted }
-        guard !fresh.isEmpty else { toast("Already in your actions."); return }
+        guard !fresh.isEmpty else {
+            if let match = workspace.tasks.first(where: { $0.noteId == note.id && candidates.map { String($0.prefix(500)) }.contains($0.title) }) {
+                highlightAction(match.id)
+            }
+            toast("Already in your actions.")
+            return
+        }
         change { w in w.tasks += fresh.map { WorkTask(title: String($0.prefix(500)), noteId: note.id) } }
         toast(fresh.count == 1 ? "Added to Next." : "\(fresh.count) actions added.")
+    }
+    private func highlightAction(_ id: String) {
+        highlightedActionID = id
+        if let actionHighlightMonitor { NSEvent.removeMonitor(actionHighlightMonitor) }
+        actionHighlightMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
+            guard event.window != nil else { return event }
+            self?.highlightedActionID = nil
+            if let monitor = self?.actionHighlightMonitor {
+                NSEvent.removeMonitor(monitor)
+                self?.actionHighlightMonitor = nil
+            }
+            return event
+        }
     }
     func addTask(_ title: String, priority: Priority, reminder: Date?, telegramReminder: Bool = false) {
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)

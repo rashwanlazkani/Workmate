@@ -163,10 +163,12 @@ struct WorkspaceView: View {
                 VStack(alignment: .leading, spacing: 15) {
                     HStack { Text("Next").font(.system(size: 15, weight: .medium)); Spacer() }
                     QuickAddTask()
+                    ScrollViewReader { actionProxy in
                     ScrollView {
                         VStack(spacing: 2) {
-                            let tasks = store.workspace.openTasks
-                            ForEach(allTasks ? tasks : Array(tasks.prefix(6))) { task in TaskRow(task: task) }
+                            let archivedMatch = store.workspace.tasks.filter { $0.isArchived && $0.id == store.highlightedActionID }
+                            let tasks = store.workspace.openTasks + archivedMatch
+                            ForEach(allTasks || store.highlightedActionID != nil ? tasks : Array(tasks.prefix(6))) { task in TaskRow(task: task).id(task.id) }
                             if tasks.isEmpty {
                                 Text("A little room to breathe.").font(.system(size: 12)).foregroundStyle(Palette.muted).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 15)
                             }
@@ -176,6 +178,14 @@ struct WorkspaceView: View {
                             }
                         }
                     }.scrollIndicators(.hidden)
+                    .onChange(of: store.highlightedActionID) { _, id in
+                        guard let id else { return }
+                        Task { @MainActor in
+                            await Task.yield()
+                            withAnimation { actionProxy.scrollTo(id, anchor: .center) }
+                        }
+                    }
+                    }
                     Button { archiveShown = true } label: {
                         Label("Archive · \(store.workspace.tasks.filter { $0.isArchived }.count)", systemImage: "archivebox")
                     }.buttonStyle(FullHitButtonStyle()).font(.system(size: 11)).foregroundStyle(.secondary)
