@@ -206,7 +206,7 @@ struct NoteColumn: View {
     @EnvironmentObject var store: WorkspaceStore
     let note: Note
     @ViewState<String> private var selected = ""
-    @StateObject private var editorController = NoteEditorController()
+    @ViewState<String?> private var newSectionID: String?
     @ViewState<Bool> private var chooseNote = false
     @ViewState<Bool> private var confirmDelete = false
     @ViewState<Meeting?> private var newMeeting: Meeting?
@@ -254,12 +254,34 @@ struct NoteColumn: View {
                     }
                 }.scrollIndicators(.hidden).frame(height: 30).padding(.bottom, 14)
             }
-            NoteFormattingToolbar(controller: editorController)
-            NativeNoteEditor(text: note.body, richText: note.richText, selectedText: $selected, controller: editorController, onChange: { body, richText in store.updateNoteContent(note.id, body: body, richText: richText) }, onFocus: { store.activeColumn = note.id })
-                .overlay(alignment: .topLeading) {
-                    if note.body.isEmpty { Text("A thought, a meeting, something to remember…").font(.system(size: 14)).foregroundStyle(Palette.muted).padding(.top, 4).allowsHitTesting(false) }
+            GeometryReader { geometry in
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(note.contentSections.enumerated()), id: \.element.id) { index, section in
+                                if index > 0 { Rectangle().fill(Palette.line).frame(height: 1).padding(.vertical, 24) }
+                                NoteSectionEditor(noteID: note.id, section: section, first: index == 0,
+                                                  minimumHeight: note.contentSections.count == 1 ? max(180, geometry.size.height - 80) : 200,
+                                                  autofocus: newSectionID == section.id, selected: $selected,
+                                                  added: { newSectionID = $0 })
+                                    .id(section.id)
+                            }
+                            Button {
+                                newSectionID = store.addSection(note.id)
+                            } label: {
+                                Label("Add section", systemImage: "plus").font(.system(size: 12, weight: .medium))
+                                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                    .contentShape(Rectangle())
+                            }.buttonStyle(.plain).foregroundStyle(Palette.accent)
+                                .background(Palette.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 9))
+                                .padding(.top, 20).disabled(note.contentSections.count >= 50)
+                        }.padding(.bottom, 8)
+                    }
+                    .onChange(of: newSectionID) { _, id in
+                        if let id { withAnimation { proxy.scrollTo(id, anchor: .top) } }
+                    }
                 }
-                .frame(maxHeight: .infinity)
+            }
             HStack {
                 Group {
                     let meetings = store.workspace.meetings.filter { !$0.canceled }

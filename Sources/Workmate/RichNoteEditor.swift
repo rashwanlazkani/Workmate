@@ -4,6 +4,7 @@ import WorkmateCore
 
 @MainActor final class NoteEditorController: ObservableObject {
     weak var editor: RichNoteTextView?
+    @Published var contentHeight: CGFloat = 180
     @Published var selectionStyle = NoteFormatting.SelectionStyle()
     func refreshSelectionStyle() {
         guard let editor else { return }
@@ -129,6 +130,19 @@ private struct NoteLinkPopover: View {
 
 @MainActor final class RichNoteTextView: NSTextView {
     weak var controller: NoteEditorController?
+    override func layout() {
+        super.layout()
+        updateContentHeight()
+    }
+    func updateContentHeight() {
+        guard let layoutManager, let textContainer else { return }
+        layoutManager.ensureLayout(for: textContainer)
+        let height = ceil(layoutManager.usedRect(for: textContainer).height + textContainerInset.height * 2 + 24)
+        guard let controller, abs(controller.contentHeight - height) > 1 else { return }
+        DispatchQueue.main.async { [weak controller] in
+            if let controller, abs(controller.contentHeight - height) > 1 { controller.contentHeight = height }
+        }
+    }
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if window?.firstResponder === self, event.modifierFlags.intersection([.command, .option, .control]) == .command {
             switch event.charactersIgnoringModifiers?.lowercased() {
@@ -229,6 +243,7 @@ struct NativeNoteEditor: NSViewRepresentable {
             editor.textStorage?.addAttribute(.foregroundColor, value: NSColor.white, range: NSRange(location: 0, length: editor.attributedString().length))
             let encoded = NoteFormatting.encode(editor.attributedString())
             lastRichText = encoded
+            (editor as? RichNoteTextView)?.updateContentHeight()
             parent.onChange(editor.string, encoded)
             parent.controller.refreshSelectionStyle()
         }

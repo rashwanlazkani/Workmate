@@ -33,11 +33,18 @@ export const taskSchema = z.object({
   createdAt: z.string(),
   completedAt: z.string().optional(),
 });
+export const noteSectionSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().max(200),
+  body: z.string().max(60000),
+  richText: z.string().max(800000).optional(),
+});
 export const noteSchema = z.object({
   id: z.string().uuid(),
   title: z.string().max(200),
   body: z.string().max(60000),
   richText: z.string().max(800000).optional(),
+  sections: z.array(noteSectionSchema).min(1).max(50).refine((sections) => new Set(sections.map((section) => section.id)).size === sections.length).optional(),
   project: z.string().max(80),
   updatedAt: z.string(),
   pinned: z.boolean(),

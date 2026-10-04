@@ -190,7 +190,12 @@ import WorkmateCore
     func updateNote(_ id: String, title: String? = nil, body: String? = nil) {
         change { w in
             guard let i = w.notes.firstIndex(where: { $0.id == id }) else { return }
-            if let title { w.notes[i].title = String(title.prefix(200)) }
+            if let title {
+                w.notes[i].title = String(title.prefix(200))
+                if var sections = w.notes[i].sections, !sections.isEmpty {
+                    sections[0].title = w.notes[i].title; w.notes[i].setSections(sections)
+                }
+            }
             if let body { w.notes[i].body = String(body.prefix(60000)); w.notes[i].richText = nil }
             w.notes[i].updatedAt = Dates.iso()
         }
@@ -200,6 +205,43 @@ import WorkmateCore
             guard let i = w.notes.firstIndex(where: { $0.id == id }) else { return }
             w.notes[i].body = body; w.notes[i].richText = richText
             w.notes[i].updatedAt = Dates.iso()
+        }
+    }
+    @discardableResult
+    func editSections(_ noteID: String, _ edit: (inout [NoteSection]) -> Void) -> Bool {
+        guard var note = workspace.notes.first(where: { $0.id == noteID }) else { return false }
+        var sections = note.contentSections; edit(&sections); note.setSections(sections)
+        guard note.validSections, note.body.count <= 60000 else { toast("This note is full. Add another note column."); return false }
+        change { workspace in
+            if let index = workspace.notes.firstIndex(where: { $0.id == noteID }) { workspace.notes[index] = note }
+        }
+        return true
+    }
+    func updateSection(_ noteID: String, sectionID: String, title: String? = nil, body: String? = nil, richText: String? = nil) {
+        editSections(noteID) { sections in
+            guard let index = sections.firstIndex(where: { $0.id == sectionID }) else { return }
+            if let title { sections[index].title = String(title.prefix(200)) }
+            if let body { sections[index].body = body; sections[index].richText = richText }
+        }
+    }
+    func addSection(_ noteID: String, after sectionID: String? = nil, splitAt: Int? = nil) -> String? {
+        var addedID: String?
+        let saved = editSections(noteID) { sections in
+            let index = sections.firstIndex(where: { $0.id == sectionID }) ?? (sections.count - 1)
+            let added: NoteSection
+            if let splitAt {
+                let pair = NoteFormatting.splitSection(sections[index], at: splitAt)
+                sections[index] = pair.0; added = pair.1
+            } else { added = NoteSection() }
+            sections.insert(added, at: index + 1); addedID = added.id
+        }
+        return saved ? addedID : nil
+    }
+    func mergeSection(_ noteID: String, sectionID: String) {
+        editSections(noteID) { sections in
+            guard let index = sections.firstIndex(where: { $0.id == sectionID }), index > 0 else { return }
+            sections[index - 1] = NoteFormatting.mergeSections(sections[index - 1], sections[index])
+            sections.remove(at: index)
         }
     }
     func addActions(from note: Note, selected: String = "") {

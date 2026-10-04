@@ -11,6 +11,7 @@ struct DriveCloudTests {
         #expect(workspace.notes.isEmpty)
         workspace.notes = [Note(title: "iCloud backup check", body: "Unicode: möte 你好")]
         workspace.notes[0].richText = NoteFormatting.encode(NoteFormatting.decode(body: workspace.notes[0].body, richText: nil))
+        workspace.notes[0].setSections(workspace.notes[0].contentSections + [NoteSection(title: "Decisions", body: "Keep the section in the backup")])
         workspace.tasks = [WorkTask(title: "Mac only", reminder: Date().addingTimeInterval(3600))]
         workspace.tasks[0].tags = ["PO-Sync", "release"]
         var meeting = Meeting(title: "Different weekday times", start: Date(), end: Date().addingTimeInterval(3600))

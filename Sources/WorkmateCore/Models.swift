@@ -80,16 +80,48 @@ public struct WorkTask: Codable, Identifiable, Equatable, Sendable {
     }
 }
 
+public struct NoteSection: Codable, Identifiable, Equatable, Sendable {
+    public var id: String
+    public var title: String
+    public var body: String
+    public var richText: String?
+    public init(id: String = UUID().uuidString.lowercased(), title: String = "", body: String = "", richText: String? = nil) {
+        self.id = id; self.title = title; self.body = body; self.richText = richText
+    }
+}
+
 public struct Note: Codable, Identifiable, Equatable, Sendable {
     public var id = UUID().uuidString.lowercased()
     public var title = ""
     public var body = ""
     public var richText: String?
+    public var sections: [NoteSection]?
     public var project = ""
     public var updatedAt = Dates.iso()
     public var pinned = false
     public var meetingIds: [String]? = []
     public init(title: String = "", body: String = "") { self.title = title; self.body = body }
+    public var contentSections: [NoteSection] {
+        if let sections, !sections.isEmpty { return sections }
+        return [NoteSection(id: id, title: title, body: body, richText: richText)]
+    }
+    public mutating func setSections(_ values: [NoteSection]) {
+        guard let first = values.first else { return }
+        sections = values
+        title = first.title
+        // Keep a plain-text projection for search, AI, task extraction and older backups.
+        body = values.enumerated().map { index, section in
+            index == 0 || section.title.isEmpty ? section.body : section.title + "\n" + section.body
+        }.joined(separator: "\n\n")
+        richText = nil
+        updatedAt = Dates.iso()
+    }
+    public var validSections: Bool {
+        guard let sections else { return true }
+        return !sections.isEmpty && sections.count <= 50 && Set(sections.map(\.id)).count == sections.count && sections.allSatisfy {
+            UUID(uuidString: $0.id) != nil && $0.title.count <= 200 && $0.body.count <= 60000 && ($0.richText?.count ?? 0) <= 800000
+        }
+    }
     public var displayTitle: String { title.isEmpty ? String(body.split(separator: "\n").first ?? "Untitled note").prefixString(60) : title }
 }
 
@@ -186,7 +218,7 @@ public struct Workspace: Codable, Equatable, Sendable {
         guard tasks.count <= 1000, notes.count <= 300, meetings.count <= 500,
               Set(tasks.map(\.id)).count == tasks.count, Set(notes.map(\.id)).count == notes.count,
               tasks.allSatisfy({ UUID(uuidString: $0.id) != nil && !$0.title.isEmpty && $0.title.count <= 500 && ($0.tags?.count ?? 0) <= 20 && ($0.tags ?? []).allSatisfy { $0.count <= 200 } && ($0.remindAt.isEmpty || $0.reminder != nil) }),
-              notes.allSatisfy({ UUID(uuidString: $0.id) != nil && $0.title.count <= 200 && $0.body.count <= 60000 && ($0.richText?.count ?? 0) <= 800000 }),
+              notes.allSatisfy({ UUID(uuidString: $0.id) != nil && $0.title.count <= 200 && $0.body.count <= 60000 && ($0.richText?.count ?? 0) <= 800000 && $0.validSections }),
               meetings.allSatisfy({ ($0.weeklySchedule == nil || (!$0.weeklySchedule!.isEmpty && $0.weeklySchedule!.allSatisfy(\.isValid) && Set($0.weeklySchedule!.map(\.weekday)).count == $0.weeklySchedule!.count)) && ($0.weekdays == nil || (!$0.weekdays!.isEmpty && $0.weekdays!.allSatisfy { (1...7).contains($0) } && Set($0.weekdays!).count == $0.weekdays!.count)) && UUID(uuidString: $0.id) != nil && !$0.title.isEmpty && $0.title.count <= 200 && Dates.parse($0.startAt) != nil && Dates.parse($0.endAt) != nil && $0.end > $0.start && (0...120).contains($0.reminderMinutes) && TimeZone(identifier: $0.timezone) != nil }),
               TimeZone(identifier: settings.timezone) != nil,
               settings.digestTime.range(of: "^([01][0-9]|2[0-3]):[0-5][0-9]$", options: .regularExpression) != nil,

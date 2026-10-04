@@ -1,6 +1,24 @@
 import AppKit
 
 public enum NoteFormatting {
+    public static func splitSection(_ section: NoteSection, at location: Int) -> (NoteSection, NoteSection) {
+        let text = decode(body: section.body, richText: section.richText)
+        let index = min(max(0, location), text.length)
+        let before = text.attributedSubstring(from: NSRange(location: 0, length: index))
+        let after = text.attributedSubstring(from: NSRange(location: index, length: text.length - index))
+        return (NoteSection(id: section.id, title: section.title, body: before.string, richText: encode(before)),
+                NoteSection(body: after.string, richText: encode(after)))
+    }
+    public static func mergeSections(_ first: NoteSection, _ second: NoteSection) -> NoteSection {
+        let text = NSMutableAttributedString(attributedString: decode(body: first.body, richText: first.richText))
+        if text.length > 0 { text.append(NSAttributedString(string: "\n\n", attributes: attributes)) }
+        if !second.title.isEmpty {
+            var heading = attributes; heading[.font] = NSFont.boldSystemFont(ofSize: 14)
+            text.append(NSAttributedString(string: second.title + "\n", attributes: heading))
+        }
+        text.append(decode(body: second.body, richText: second.richText))
+        return NoteSection(id: first.id, title: first.title, body: text.string, richText: encode(text))
+    }
     public enum ListKind: Equatable { case bullet, numbered, checklist }
     public static var attributes: [NSAttributedString.Key: Any] {
         let paragraph = NSMutableParagraphStyle(); paragraph.lineSpacing = 7

@@ -61,3 +61,5 @@ The Raspberry Pi reminder agent receives schedule changes over a persistent MQTT
 ## Help and first launch
 
 A four-step welcome tour appears on first launch and can be skipped. Open **Help → Workmate Help**, the toolbar **?**, or **Settings → Help & getting started** for searchable topics. Choose **Welcome Tour…** or **Restart tour** to replay it. Tutorial completion is remembered on this Mac. Popups remain open when you switch apps. Press Escape to close the active popup, including from a text or time field. You can also close it explicitly, or finish with Save, Cancel or a selection.
+
+Notes can contain stacked sections in one column. Use **Add section** for a new heading, or the section icon beside the formatting toolbar → **Split at cursor** to move the text below the cursor into a new section. **Merge with section above** keeps both sections’ text and formatting. Sections remain part of the same searchable note and iCloud/AWS backup.
