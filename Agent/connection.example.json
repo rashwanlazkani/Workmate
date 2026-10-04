@@ -1,0 +1,4 @@
+{
+  "apiURL": "https://your-api.execute-api.eu-north-1.amazonaws.com",
+  "token": "Provision a dedicated reminder-agent key; do not use the workspace key"
+}

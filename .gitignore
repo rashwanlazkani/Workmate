@@ -1,0 +1,15 @@
+.build/
+.swiftpm/
+.workmate-build.*/
+Workmate.app/
+node_modules/
+cdk.out/
+cdk-outputs.json
+.env*
+!.env.example
+.DS_Store
+*.app/
+Agent/data/
+Agent/connection.json
+__pycache__/
+*.pyc

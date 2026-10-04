@@ -1,0 +1,5 @@
+{
+  "region": "eu-north-1",
+  "clientId": "example-client-id",
+  "apiUrl": "https://example.invalid"
+}
