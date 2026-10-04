@@ -69,3 +69,9 @@ Each note section has its own **Meeting** selector and removable meeting tags. M
 For notes with multiple sections, the large title at the top names the whole column independently; each section has its own heading. Formatting controls use larger icons, 17-point body text and larger list markers.
 
 Use the section menu → **Delete section…** to remove a section after confirmation. The column name and other sections stay saved; deleting the final section leaves an empty editor.
+
+Highlight note text to show a floating **Make action** button beside the end of the selection. It follows the selected text and disappears when the selection is cleared or the editor loses focus.
+
+Search results include a snippet around matching text, highlighted search terms, and the matching section heading. Meeting-only matches identify the meeting link.
+
+Action rows and button surfaces use their full visible area as the click target, including spacing inside reminder rows and labeled toggles.

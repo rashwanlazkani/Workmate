@@ -108,7 +108,7 @@ struct NoteFormattingToolbar: View {
     }
     private func formatButton(_ label: String, icon: String, active: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) { Image(systemName: icon).font(.system(size: 18, weight: .medium)).frame(width: 34, height: 36).contentShape(RoundedRectangle(cornerRadius: 6)) }
-            .buttonStyle(.plain)
+            .buttonStyle(FullHitButtonStyle())
             .foregroundStyle(active ? Palette.accent : Color.secondary)
             .background(active ? Palette.accent.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
             .help(label).accessibilityLabel(label).accessibilityValue(active ? "Selected" : "Not selected")
@@ -130,9 +130,91 @@ private struct NoteLinkPopover: View {
 
 @MainActor final class RichNoteTextView: NSTextView {
     weak var controller: NoteEditorController?
+    var makeAction: ((String) -> Void)?
+    private lazy var selectionButton: NSButton = {
+        let button = NSButton(title: "↗ Make action", target: self, action: #selector(makeSelectedAction))
+        button.isBordered = false
+        button.wantsLayer = true
+        button.layer?.cornerRadius = 5
+        button.layer?.borderWidth = 1
+        button.layer?.borderColor = NSColor.white.withAlphaComponent(0.22).cgColor
+        button.layer?.backgroundColor = NSColor(Palette.background).cgColor
+        button.font = .systemFont(ofSize: 12, weight: .semibold)
+        button.contentTintColor = NSColor(Palette.accent)
+        button.refusesFirstResponder = true
+        button.setAccessibilityLabel("Make action from selection")
+        button.toolTip = "Create a task from the highlighted text"
+        button.isHidden = true
+        button.setAccessibilityHidden(true)
+        return button
+    }()
+    private var scrollObserver: NSObjectProtocol?
+    private var selectionClickMonitor: Any?
+    private func hideSelectionButton() {
+        selectionButton.isHidden = true
+        selectionButton.setAccessibilityHidden(true)
+    }
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let scrollObserver { NotificationCenter.default.removeObserver(scrollObserver); self.scrollObserver = nil }
+        if let selectionClickMonitor { NSEvent.removeMonitor(selectionClickMonitor); self.selectionClickMonitor = nil }
+        selectionButton.removeFromSuperview()
+        guard let window else { return }
+        window.contentView?.addSubview(selectionButton)
+        // NSHostingView handles its own hit testing; route the floating native overlay first.
+        selectionClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+            guard let self, event.window === self.window, !self.selectionButton.isHidden,
+                  self.selectionButton.bounds.contains(self.selectionButton.convert(event.locationInWindow, from: nil)) else { return event }
+            self.makeSelectedAction()
+            return nil
+        }
+        scrollObserver = NotificationCenter.default.addObserver(forName: NSView.boundsDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.updateSelectionButton() }
+        }
+    }
+    deinit {
+        if let selectionClickMonitor { NSEvent.removeMonitor(selectionClickMonitor) }
+        if let scrollObserver { NotificationCenter.default.removeObserver(scrollObserver) }
+    }
+    @objc private func makeSelectedAction() {
+        let range = selectedRange()
+        guard range.length > 0, NSMaxRange(range) <= (string as NSString).length else { return }
+        let text = (string as NSString).substring(with: range).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        makeAction?(text)
+        setSelectedRange(NSRange(location: NSMaxRange(range), length: 0))
+        hideSelectionButton()
+    }
+    func updateSelectionButton() {
+        let range = selectedRange(), ns = string as NSString
+        guard makeAction != nil, window?.firstResponder === self, range.length > 0,
+              NSMaxRange(range) <= ns.length,
+              !ns.substring(with: range).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let layoutManager, let textContainer else { hideSelectionButton(); return }
+        layoutManager.ensureLayout(for: textContainer)
+        var last = NSMaxRange(range) - 1
+        while last > range.location && CharacterSet.newlines.contains(UnicodeScalar(ns.character(at: last)) ?? " ") { last -= 1 }
+        let glyph = layoutManager.glyphRange(forCharacterRange: NSRange(location: last, length: 1), actualCharacterRange: nil)
+        var anchor = layoutManager.boundingRect(forGlyphRange: glyph, in: textContainer)
+        anchor.origin.x += textContainerOrigin.x; anchor.origin.y += textContainerOrigin.y
+        guard visibleRect.intersects(anchor), let container = window?.contentView else { hideSelectionButton(); return }
+        let target = convert(anchor, to: container)
+        let width: CGFloat = 122, height: CGFloat = 28
+        let x = min(max(4, target.maxX - 10), max(4, container.bounds.width - width - 4))
+        let y = container.isFlipped ? target.minY - height - 6 : target.maxY + 6
+        selectionButton.frame = NSRect(x: x, y: max(4, min(y, container.bounds.height - height - 4)), width: width, height: height)
+        selectionButton.isHidden = false
+        selectionButton.setAccessibilityHidden(false)
+    }
+    override func resignFirstResponder() -> Bool {
+        let result = super.resignFirstResponder()
+        if result { hideSelectionButton() }
+        return result
+    }
     override func layout() {
         super.layout()
         updateContentHeight()
+        updateSelectionButton()
     }
     func updateContentHeight() {
         guard let layoutManager, let textContainer else { return }
@@ -192,6 +274,7 @@ struct NativeNoteEditor: NSViewRepresentable {
     var controller: NoteEditorController
     var onChange: (String, String?) -> Void
     var onFocus: () -> Void
+    var onMakeAction: ((String) -> Void)? = nil
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSScrollView()
@@ -209,6 +292,7 @@ struct NativeNoteEditor: NSViewRepresentable {
         editor.setAccessibilityLabel("Note content")
         editor.textStorage?.setAttributedString(NoteFormatting.decode(body: text, richText: richText))
         editor.typingAttributes = NoteFormatting.attributes
+        editor.makeAction = onMakeAction
         editor.delegate = context.coordinator; editor.controller = controller; controller.editor = editor
         context.coordinator.lastRichText = richText
         scroll.documentView = editor
@@ -218,6 +302,7 @@ struct NativeNoteEditor: NSViewRepresentable {
         context.coordinator.parent = self
         guard let editor = scroll.documentView as? RichNoteTextView else { return }
         controller.editor = editor
+        editor.makeAction = onMakeAction
         if editor.string != text || context.coordinator.lastRichText != richText {
             let range = editor.selectedRange()
             context.coordinator.applying = true
@@ -254,6 +339,7 @@ struct NativeNoteEditor: NSViewRepresentable {
         func textViewDidChangeSelection(_ notification: Notification) {
             guard !applying, let editor = notification.object as? NSTextView else { return }
             parent.controller.refreshSelectionStyle()
+            (editor as? RichNoteTextView)?.updateSelectionButton()
             let range = editor.selectedRange()
             if NSMaxRange(range) <= (editor.string as NSString).length { parent.selectedText = (editor.string as NSString).substring(with: range) }
         }

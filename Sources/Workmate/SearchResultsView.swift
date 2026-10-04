@@ -10,9 +10,9 @@ struct SearchResultsView: View {
         let matches = store.search(store.filterQuery)
         VStack(alignment: .leading, spacing: 23) {
             HStack {
-                Button { store.filterQuery = "" } label: { Label("All notes", systemImage: "chevron.left") }.buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(.secondary)
+                Button { store.filterQuery = "" } label: { Label("All notes", systemImage: "chevron.left") }.buttonStyle(FullHitButtonStyle()).font(.system(size: 12)).foregroundStyle(.secondary)
                 Spacer()
-                Toggle("Include archive", isOn: $store.includeArchive).toggleStyle(.checkbox).font(.system(size: 12))
+                Toggle("Include archive", isOn: $store.includeArchive).toggleStyle(FullRowToggleStyle(checkbox: true)).font(.system(size: 12))
                 Text("\(matches.count) related items").font(.system(size: 11)).foregroundStyle(.secondary)
             }
             HStack {
@@ -38,7 +38,7 @@ struct SearchResultsView: View {
                                         }
                                         Spacer(); Image(systemName: "arrow.up.right").foregroundStyle(.secondary)
                                     }.padding(17).background(Palette.panel, in: RoundedRectangle(cornerRadius: 9))
-                                }.buttonStyle(.plain)
+                                }.buttonStyle(FullHitButtonStyle())
                             }
                         }
                     }
@@ -52,11 +52,11 @@ struct SearchResultsView: View {
                                     } label: {
                                         VStack(alignment: .leading, spacing: 12) {
                                             Text(note.displayTitle).font(.system(size: 15, weight: .medium)).lineLimit(1)
-                                            Text(note.body).font(.system(size: 12)).lineSpacing(5).foregroundStyle(.secondary).lineLimit(4).frame(maxWidth: .infinity, alignment: .leading)
+                                            SearchPreviewView(note: note, query: store.filterQuery, meetings: store.workspace.meetings)
                                             let linked = store.workspace.meetings.filter { (note.meetingIds ?? []).contains($0.id) }
                                             if !linked.isEmpty { Text(linked.map(\.title).joined(separator: " · ")).font(.system(size: 10)).foregroundStyle(Palette.accent).lineLimit(1) }
                                         }.frame(maxWidth: .infinity, minHeight: 100, alignment: .topLeading).padding(18).background(Palette.panel, in: RoundedRectangle(cornerRadius: 9))
-                                    }.buttonStyle(.plain)
+                                    }.buttonStyle(FullHitButtonStyle())
                                 }
                             }
                         }

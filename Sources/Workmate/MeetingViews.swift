@@ -23,7 +23,7 @@ struct MeetingsSheet: View {
                 TextField("Find a meeting…", text: $query).modernTextField(autofocus: true).accessibilityLabel("Find a meeting")
                 Button { store.createMeeting() } label: {
                     Label("New meeting", systemImage: "plus").frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-                }.buttonStyle(.plain).foregroundStyle(Palette.accent).padding(.vertical, 4)
+                }.buttonStyle(FullHitButtonStyle()).foregroundStyle(Palette.accent).padding(.vertical, 4)
                 Divider().overlay(Palette.line)
                 if meetings.isEmpty {
                     Text(query.isEmpty ? "Add your first meeting to keep its notes and actions together." : "No matching meetings.")
@@ -47,9 +47,9 @@ struct MeetingsSheet: View {
                                             Spacer()
                                             if store.meetingFocusID == meeting.id { Image(systemName: "checkmark").foregroundStyle(Palette.accent) }
                                         }.padding(.vertical, 10).contentShape(Rectangle())
-                                    }.buttonStyle(.plain).accessibilityLabel("Filter by " + meeting.title)
+                                    }.buttonStyle(FullHitButtonStyle()).accessibilityLabel("Filter by " + meeting.title)
                                     Button { store.editingMeeting = meeting } label: { Image(systemName: "ellipsis").frame(width: 24, height: 28).contentShape(Rectangle()) }
-                                        .buttonStyle(.plain).foregroundStyle(.secondary).help("Edit meeting").accessibilityLabel("Edit " + meeting.title)
+                                        .buttonStyle(FullHitButtonStyle()).foregroundStyle(.secondary).help("Edit meeting").accessibilityLabel("Edit " + meeting.title)
                                 }
                             }
                         }
@@ -57,9 +57,9 @@ struct MeetingsSheet: View {
                 }
                 Divider().overlay(Palette.line)
                 HStack {
-                    Button("All notes") { store.meetingFocusID = nil; store.filterQuery = ""; dismiss() }.buttonStyle(.plain)
+                    Button("All notes") { store.meetingFocusID = nil; store.filterQuery = ""; dismiss() }.buttonStyle(FullHitButtonStyle())
                     Spacer()
-                    Button("Connect calendar") { dismiss(); store.settingsSection = "calendars"; store.settingsShown = true }.buttonStyle(.plain)
+                    Button("Connect calendar") { dismiss(); store.settingsSection = "calendars"; store.settingsShown = true }.buttonStyle(FullHitButtonStyle())
                 }.font(.system(size: 11)).foregroundStyle(.secondary)
             }.padding(22).frame(width: 380).popoverSurface()
         }
@@ -149,7 +149,7 @@ struct MeetingEditor: View {
                                             .foregroundStyle(selected ? Color.white : Color.secondary)
                                             .background(selected ? Palette.accent : Palette.field, in: RoundedRectangle(cornerRadius: 10))
                                             .contentShape(Rectangle())
-                                    }.buttonStyle(.plain).accessibilityLabel(weekdayNames[day - 1])
+                                    }.buttonStyle(FullHitButtonStyle()).accessibilityLabel(weekdayNames[day - 1])
                                         .accessibilityValue(selected ? "Selected" : "Not selected")
                                         .accessibilityAddTraits(selected ? .isSelected : [])
                                 }
@@ -241,7 +241,7 @@ struct MeetingEditor: View {
                 .foregroundStyle(meeting.recurrence == value ? Color.white : .secondary)
                 .background(meeting.recurrence == value ? Palette.accent : .clear, in: Capsule())
                 .contentShape(Rectangle())
-        }.buttonStyle(.plain).accessibilityAddTraits(meeting.recurrence == value ? .isSelected : [])
+        }.buttonStyle(FullHitButtonStyle()).accessibilityAddTraits(meeting.recurrence == value ? .isSelected : [])
     }
     private func meetingDateRow(_ title: String, date: Binding<Date>) -> some View {
         MeetingDateRow(title: title, date: date, timezone: meetingCalendar.timeZone)
@@ -291,7 +291,7 @@ struct MeetingFocusView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Button { store.meetingFocusID = nil } label: { Label("All notes", systemImage: "chevron.left") }
-                .buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(.secondary)
+                .buttonStyle(FullHitButtonStyle()).font(.system(size: 12)).foregroundStyle(.secondary)
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(meeting.title).font(.system(size: 30, weight: .medium))
@@ -303,7 +303,7 @@ struct MeetingFocusView: View {
                 if meeting.occurrences(after: store.clock).first?.isCurrent(at: store.clock) == true {
                     Label("In progress", systemImage: "circle.fill").font(.system(size: 11)).foregroundStyle(Palette.accent)
                 }
-                Button { editMeeting = true } label: { Image(systemName: "ellipsis") }.buttonStyle(.plain).help("Meeting details")
+                Button { editMeeting = true } label: { Image(systemName: "ellipsis") }.buttonStyle(FullHitButtonStyle()).help("Meeting details")
                     .popover(isPresented: $editMeeting, arrowEdge: .bottom) { MeetingEditor(meeting: meeting).environmentObject(store) }
             }
             Divider().overlay(Palette.line)
@@ -340,14 +340,14 @@ struct MeetingFocusView: View {
                         Text("Meeting notes").font(.system(size: 12)).foregroundStyle(.secondary)
                         Spacer()
                         if intelligence.running { ProgressView().controlSize(.mini); Text("Reading notes…").font(.system(size: 10)).foregroundStyle(.secondary) }
-                        Button { linkExisting = true } label: { Label("Link a note", systemImage: "link") }.buttonStyle(.plain).font(.system(size: 11))
+                        Button { linkExisting = true } label: { Label("Link a note", systemImage: "link") }.buttonStyle(FullHitButtonStyle()).font(.system(size: 11))
                             .popover(isPresented: $linkExisting) {
                                 NoteChooser { id in
                                     if !(store.workspace.notes.first { $0.id == id }?.meetingIds ?? []).contains(meeting.id) { store.linkNote(id, to: meeting) }
                                     linkExisting = false
                                 }.environmentObject(store)
                             }
-                        Button { store.newNote() } label: { Image(systemName: "plus") }.buttonStyle(.plain).help("New meeting note")
+                        Button { store.newNote() } label: { Image(systemName: "plus") }.buttonStyle(FullHitButtonStyle()).help("New meeting note")
                     }
                     if notes.isEmpty {
                         VStack(alignment: .leading, spacing: 15) {
@@ -379,12 +379,12 @@ struct MeetingFocusView: View {
                                     HStack {
                                         Text(note.displayTitle).font(.system(size: 12)).lineLimit(2)
                                         Spacer()
-                                        Button { store.linkNote(note.id, to: meeting) } label: { Image(systemName: "plus.circle") }.buttonStyle(.plain).help("Link \(note.displayTitle)")
+                                        Button { store.linkNote(note.id, to: meeting) } label: { Image(systemName: "plus.circle") }.buttonStyle(FullHitButtonStyle()).help("Link \(note.displayTitle)")
                                     }.padding(.vertical, 6)
                                 }
                             }
                             Button { intelligence.scan(store.workspace, immediate: true) } label: { Label(intelligence.running ? "Scanning…" : "Scan notes", systemImage: "sparkles") }
-                                .buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(Palette.accent).disabled(!intelligence.available || intelligence.running).padding(.top, 15)
+                                .buttonStyle(FullHitButtonStyle()).font(.system(size: 11)).foregroundStyle(Palette.accent).disabled(!intelligence.available || intelligence.running).padding(.top, 15)
                             if !intelligence.available { Text(intelligence.availabilityText).font(.system(size: 10)).foregroundStyle(.secondary) }
                         }
                     }

@@ -12,7 +12,7 @@ struct PriorityMenu: View {
                 Text(priority.title).font(.system(size: 10))
             }.foregroundStyle(priority.tint)
         }
-        .buttonStyle(.plain).fixedSize()
+        .buttonStyle(FullHitButtonStyle()).fixedSize()
         .accessibilityLabel("Priority: \(priority.title)").help("Change priority")
         .popover(isPresented: $shown, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 12) {
@@ -25,7 +25,7 @@ struct PriorityMenu: View {
                             Spacer()
                             if value == priority { Image(systemName: "checkmark").font(.system(size: 11)).foregroundStyle(value.tint) }
                         }.padding(.vertical, 6).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(FullHitButtonStyle())
                 }
             }.padding(18).frame(width: 205).popoverSurface()
         }
@@ -56,7 +56,7 @@ struct ReminderControl: View {
                 .padding(.horizontal, prominent ? 12 : 0).padding(.vertical, prominent ? 8 : 0)
                 .background(prominent ? Palette.accent.opacity(0.10) : .clear, in: Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(FullHitButtonStyle())
         .accessibilityLabel(date.map { "Reminder: \($0.formatted(date: .abbreviated, time: .shortened)), \(sendToTelegram ? "Mac and Telegram" : "Mac")" } ?? "Add reminder")
         .help("Set a reminder")
         .popover(isPresented: $shown, arrowEdge: .bottom) {
@@ -74,7 +74,7 @@ struct ReminderControl: View {
                     }.help("Mac notifications are always included. Workmate needs notification permission in macOS.")
                     Toggle(isOn: $sendToTelegram) {
                         Label("Also notify in Telegram", systemImage: "paperplane")
-                    }.toggleStyle(.switch).controlSize(.small)
+                    }.toggleStyle(FullRowToggleStyle()).controlSize(.small)
                     if sendToTelegram && !store.telegram.connected {
                         Text("Connect Telegram in Settings to receive this reminder there.")
                             .font(.system(size: 11)).foregroundStyle(.secondary)
@@ -105,11 +105,11 @@ struct ReminderControl: View {
                     quick("Next Monday", symbol: "calendar", value: Dates.nextMonday())
                     Divider()
                     Button { custom = true } label: {
-                        HStack { Label("Choose date & time…", systemImage: "calendar.badge.clock"); Spacer(); Image(systemName: "chevron.right").font(.system(size: 9)) }
-                    }.buttonStyle(.plain)
+                        HStack { Label("Choose date & time…", systemImage: "calendar.badge.clock"); Spacer(); Image(systemName: "chevron.right").font(.system(size: 9)) }.padding(.vertical, 6).contentShape(Rectangle())
+                    }.buttonStyle(FullHitButtonStyle())
                     if date != nil {
                         Divider()
-                        Button("Remove reminder", role: .destructive) { date = nil; shown = false }.buttonStyle(.plain)
+                        Button("Remove reminder", role: .destructive) { date = nil; shown = false }.buttonStyle(FullHitButtonStyle())
                     }
                 }
             }.font(.system(size: 13)).padding(20).frame(width: 320).popoverSurface().modernButtonStyle()
@@ -122,7 +122,7 @@ struct ReminderControl: View {
                 Text(title); Spacer()
                 Text(value, format: .dateTime.hour().minute()).font(.system(size: 11)).foregroundStyle(.secondary)
             }.padding(.vertical, 3).contentShape(Rectangle())
-        }.buttonStyle(.plain)
+        }.buttonStyle(FullHitButtonStyle())
     }
 }
 struct QuickAddTask: View {
@@ -138,7 +138,7 @@ struct QuickAddTask: View {
                 TextField("Add a next step…", text: $title).textFieldStyle(.plain)
                     .font(.system(size: 13)).onSubmit(add).focused($focused).accessibilityLabel("Add a task")
                 Button(action: add) { Image(systemName: "plus.circle.fill").font(.system(size: 17)) }
-                    .buttonStyle(.plain).foregroundStyle(Palette.accent).disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityLabel("Save task")
+                    .buttonStyle(FullHitButtonStyle()).foregroundStyle(Palette.accent).disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityLabel("Save task")
             }
             HStack(spacing: 15) {
                 PriorityMenu(priority: $priority)
@@ -165,14 +165,14 @@ struct TaskRow: View {
             Button { store.toggleTask(task) } label: {
                 Image(systemName: task.isArchived ? "checkmark.square.fill" : "square")
                     .font(.system(size: 16, weight: .light)).foregroundStyle(task.isArchived ? Palette.accent : Color.white.opacity(0.28))
-            }.buttonStyle(.plain).padding(.top, 1).accessibilityLabel("\(task.isArchived ? "Restore" : "Complete") \(task.title)")
+            }.buttonStyle(FullHitButtonStyle()).padding(.top, 1).accessibilityLabel("\(task.isArchived ? "Restore" : "Complete") \(task.title)")
                 .help(task.isArchived ? "Restore to Next" : "Complete and archive")
             VStack(alignment: .leading, spacing: 8) {
                 Button { edit = true } label: {
                     Text(task.title).font(.system(size: 13)).multilineTextAlignment(.leading).lineSpacing(4)
                         .foregroundStyle(task.isArchived ? Color.secondary : Color.white.opacity(0.84)).strikethrough(task.isArchived)
                         .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-                }.buttonStyle(.plain).popover(isPresented: $edit, arrowEdge: .bottom) { TaskEditor(task: task).environmentObject(store) }
+                }.buttonStyle(FullHitButtonStyle()).popover(isPresented: $edit, arrowEdge: .bottom) { TaskEditor(task: task).environmentObject(store) }
                 if !task.tagNames.isEmpty {
                     ScrollView(.horizontal) {
                         HStack(spacing: 6) {
@@ -180,7 +180,7 @@ struct TaskRow: View {
                                 Button { store.applyFilter(tag) } label: {
                                     Text("#" + tag).font(.system(size: 10)).foregroundStyle(Palette.accent).lineLimit(1)
                                         .padding(.horizontal, 8).padding(.vertical, 4).background(Palette.accent.opacity(0.08), in: Capsule())
-                                }.buttonStyle(.plain).help("Search tag: " + tag)
+                                }.buttonStyle(FullHitButtonStyle()).help("Search tag: " + tag)
                             }
                         }
                     }.scrollIndicators(.hidden)
@@ -291,16 +291,26 @@ struct SearchSheet: View {
                 NativeSearchField(text: $query, placeholder: "Search notes, tasks & meetings", onSubmit: { store.applyFilter(query) })
                 PopoverCloseButton { dismiss() }
             }
-            Toggle("Include archive", isOn: $store.includeArchive).toggleStyle(.checkbox).font(.system(size: 12))
+            Toggle("Include archive", isOn: $store.includeArchive).toggleStyle(FullRowToggleStyle(checkbox: true)).font(.system(size: 12))
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     let matches = store.search(query)
                     ForEach(matches.meetings) { meeting in
-                        Button { store.focusMeeting(meeting.id); dismiss() } label: { Label(meeting.title, systemImage: "calendar").frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 5) }.buttonStyle(.plain)
+                        Button { store.focusMeeting(meeting.id); dismiss() } label: { Label(meeting.title, systemImage: "calendar").frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 5) }.buttonStyle(FullHitButtonStyle())
                     }
                     ForEach(query.isEmpty ? store.workspace.notes : matches.notes) { note in
-                        Button { store.filterQuery = ""; store.meetingFocusID = nil; store.openNote(note.id); dismiss() } label: { Label(note.displayTitle, systemImage: "doc.text").frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 5) }.buttonStyle(.plain)
+                        Button { store.filterQuery = ""; store.meetingFocusID = nil; store.openNote(note.id); dismiss() } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: "doc.text").padding(.top, 2)
+                                VStack(alignment: .leading, spacing: 7) {
+                                    Text(note.displayTitle).font(.system(size: 13, weight: .medium))
+                                    if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        SearchPreviewView(note: note, query: query, meetings: store.workspace.meetings)
+                                    }
+                                }.frame(maxWidth: .infinity, alignment: .leading)
+                            }.padding(.vertical, 8).contentShape(Rectangle())
+                        }.buttonStyle(FullHitButtonStyle())
                     }
                     ForEach(matches.tasks) { task in TaskRow(task: task) }
                     if !query.isEmpty && matches.count == 0 { Text("No matching notes, tasks or meetings.").foregroundStyle(.secondary).padding(.vertical, 20) }
@@ -308,7 +318,7 @@ struct SearchSheet: View {
             }.frame(height: 300)
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Divider()
-                Button { store.applyFilter(query) } label: { Label("Show everything for “\(query)”", systemImage: "line.3.horizontal.decrease") }.buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(Palette.accent)
+                Button { store.applyFilter(query) } label: { Label("Show everything for “\(query)”", systemImage: "line.3.horizontal.decrease") }.buttonStyle(FullHitButtonStyle()).font(.system(size: 12)).foregroundStyle(Palette.accent)
             }
         }.padding(20).frame(width: 470).onAppear { query = store.filterQuery }
     }

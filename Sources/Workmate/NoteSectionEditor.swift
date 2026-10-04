@@ -29,7 +29,7 @@ struct NoteSectionEditor: View {
             HStack(spacing: 8) {
                 let meetings = store.workspace.meetings.filter { !$0.canceled }
                 if meetings.isEmpty {
-                    Button(action: beginMeeting) { Label("Meeting", systemImage: "tag") }.buttonStyle(.plain)
+                    Button(action: beginMeeting) { Label("Meeting", systemImage: "tag") }.buttonStyle(FullHitButtonStyle())
                 } else {
                     Menu {
                         ForEach(meetings) { meeting in
@@ -46,12 +46,14 @@ struct NoteSectionEditor: View {
                 ScrollView(.horizontal) {
                     HStack(spacing: 6) {
                         ForEach(store.workspace.meetings.filter { (section.meetingIds ?? []).contains($0.id) }) { meeting in
-                            HStack(spacing: 5) {
-                                Button(meeting.title) { store.focusMeeting(meeting.id) }.buttonStyle(.plain)
+                            HStack(spacing: 0) {
+                                Button { store.focusMeeting(meeting.id) } label: {
+                                    Text(meeting.title).padding(.leading, 9).padding(.trailing, 5).frame(minHeight: 28)
+                                }.buttonStyle(FullHitButtonStyle())
                                 Button { store.linkSection(noteID, sectionID: section.id, to: meeting) } label: {
-                                    Image(systemName: "xmark").font(.system(size: 8))
-                                }.buttonStyle(.plain).help("Remove \(meeting.title) from this section")
-                            }.padding(.horizontal, 9).padding(.vertical, 5)
+                                    Image(systemName: "xmark").font(.system(size: 8)).frame(width: 22, height: 28)
+                                }.buttonStyle(FullHitButtonStyle()).help("Remove \(meeting.title) from this section")
+                            }
                                 .background(Palette.accent.opacity(0.10), in: Capsule())
                         }
                     }
@@ -73,14 +75,18 @@ struct NoteSectionEditor: View {
                     }
                     Divider()
                     Button("Delete section…", role: .destructive) { confirmDelete = true }
-                } label: { Image(systemName: "rectangle.split.1x2").font(.system(size: 17)).frame(width: 32, height: 36) }
+                } label: { Image(systemName: "rectangle.split.1x2").font(.system(size: 17)).frame(width: 32, height: 36).contentShape(Rectangle()) }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .help("Split this section or add another").accessibilityLabel("Section options")
             }
             NativeNoteEditor(text: section.body, richText: section.richText, selectedText: $selected,
                              controller: controller, onChange: { body, richText in
                 store.updateSection(noteID, sectionID: section.id, body: body, richText: richText)
-            }, onFocus: { store.activeColumn = noteID; selected = "" })
+            }, onFocus: { store.activeColumn = noteID; selected = "" }, onMakeAction: { text in
+                guard let note = store.workspace.notes.first(where: { $0.id == noteID }) else { return }
+                store.addActions(from: note, selected: text)
+                selected = ""
+            })
             .frame(height: max(minimumHeight, controller.contentHeight))
             .overlay(alignment: .topLeading) {
                 if section.body.isEmpty {

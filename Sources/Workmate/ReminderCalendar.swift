@@ -37,7 +37,7 @@ struct ReminderCalendar: View {
                             .background(selected ? Palette.accent : .clear, in: Circle())
                             .overlay { Circle().strokeBorder(calendar.isDateInToday(day) && !selected ? Palette.accent : .clear) }
                             .contentShape(Circle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(FullHitButtonStyle())
                         .accessibilityLabel(day.formatted(date: .complete, time: .omitted))
                         .accessibilityAddTraits(selected ? .isSelected : [])
                     }

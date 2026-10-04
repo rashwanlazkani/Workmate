@@ -18,6 +18,36 @@ extension View {
     }
 }
 
+/// Include transparent label space and padding in the native button's hit region.
+struct FullHitButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.contentShape(Rectangle())
+            .opacity(!enabled ? 0.4 : configuration.isPressed ? 0.7 : 1)
+    }
+}
+
+/// Keep the native switch/checkbox, but let the whole labeled row toggle it.
+struct FullRowToggleStyle: ToggleStyle {
+    var checkbox = false
+    func makeBody(configuration: Configuration) -> some View {
+        Button { configuration.isOn.toggle() } label: {
+            HStack(spacing: 9) {
+                if checkbox {
+                    Toggle("", isOn: configuration.$isOn).labelsHidden().toggleStyle(.checkbox)
+                        .allowsHitTesting(false).accessibilityHidden(true)
+                }
+                configuration.label
+                if !checkbox {
+                    Spacer(minLength: 12)
+                    Toggle("", isOn: configuration.$isOn).labelsHidden().toggleStyle(.switch)
+                        .allowsHitTesting(false).accessibilityHidden(true)
+                }
+            }.contentShape(Rectangle())
+        }.buttonStyle(FullHitButtonStyle()).accessibilityValue(configuration.isOn ? "On" : "Off")
+    }
+}
+
 private struct TextFieldEntryFocus: ViewModifier {
     var focus: FocusState<Bool>.Binding
     var enabled: Bool
@@ -48,6 +78,7 @@ private struct ModernButtonAppearance: ButtonStyle {
             .padding(.horizontal, shape == .circle ? 0 : 15)
             .frame(minWidth: shape == .circle ? 32 : nil, minHeight: 32)
         )
+        .contentShape(Rectangle())
         .opacity(isEnabled ? 1 : 0.4)
         .scaleEffect(configuration.isPressed ? 0.97 : 1)
         .animation(.easeOut(duration: 0.12), value: configuration.isPressed)

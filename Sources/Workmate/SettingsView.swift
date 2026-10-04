@@ -64,7 +64,7 @@ struct SettingsView: View {
                                         if !store.macNotificationsAllowed { Task { await store.enableNotifications() } }
                                     })) {
                                         HStack { Circle().fill(Color(cgColor: calendar.cgColor)).frame(width: 7, height: 7); Text(calendar.title).font(.system(size: 12)); Spacer(); Text(calendar.source.title).font(.system(size: 10)).foregroundStyle(.secondary) }
-                                    }.toggleStyle(.checkbox)
+                                    }.toggleStyle(FullRowToggleStyle(checkbox: true))
                                 }
                                 if calendars.calendars.isEmpty { Text("No calendars found. Open Calendar and choose Calendar → Add Account.").font(.system(size: 12)).foregroundStyle(.secondary) }
                                 Button("Refresh calendars") { calendars.refresh(); store.refreshCalendar() }
@@ -82,7 +82,7 @@ struct SettingsView: View {
                     Divider()
                     DisclosureGroup(isExpanded: $intelligenceOpen) {
                         VStack(alignment: .leading, spacing: 14) {
-                            Toggle("Scan notes with AI", isOn: Binding(get: { intelligence.enabled }, set: { value in intelligence.setEnabled(value, workspace: store.workspace); store.updateConfiguration { $0.intelligenceEnabled = value } })).toggleStyle(.switch).controlSize(.small)
+                            Toggle("Scan notes with AI", isOn: Binding(get: { intelligence.enabled }, set: { value in intelligence.setEnabled(value, workspace: store.workspace); store.updateConfiguration { $0.intelligenceEnabled = value } })).toggleStyle(FullRowToggleStyle()).controlSize(.small)
                             Text(intelligence.availabilityText).font(.system(size: 12)).foregroundStyle(.secondary)
                             Text("Suggests meeting links, short summaries, and unfinished action points. Suggestions are based on your notes and can be wrong; add the ones you want to keep. Notes are processed on this Mac.").font(.system(size: 11)).foregroundStyle(.secondary)
                             if !intelligence.status.isEmpty { Text(intelligence.status).font(.system(size: 11)).foregroundStyle(.secondary) }
@@ -98,7 +98,7 @@ struct SettingsView: View {
                                 Toggle("Keep an AWS backup", isOn: Binding(get: { store.driveConfiguration.backupEnabled }, set: { enabled in
                                     store.updateConfiguration { $0.backupEnabled = enabled }
                                     if enabled { Task { await store.backUpNow() } }
-                                })).toggleStyle(.switch).controlSize(.small)
+                                })).toggleStyle(FullRowToggleStyle()).controlSize(.small)
                                 if let seen = store.telegram.agentLastSeen.flatMap({ WorkmateCore.Dates.parse($0) }) {
                                     Label("Pi schedule synced " + seen.formatted(date: .abbreviated, time: .shortened), systemImage: "arrow.triangle.2.circlepath")
                                         .font(.system(size: 11)).foregroundStyle(.secondary)
@@ -168,12 +168,12 @@ struct SettingsView: View {
                                             .frame(maxWidth: .infinity).padding(.vertical, 9)
                                             .background(included ? p.tint.opacity(0.08) : .clear, in: Capsule())
                                             .overlay { Capsule().stroke(included ? p.tint.opacity(0.5) : Palette.line) }
-                                    }.buttonStyle(.plain).accessibilityLabel("Include \(p.title)").accessibilityValue(included ? "Included" : "Excluded")
+                                    }.buttonStyle(FullHitButtonStyle()).accessibilityLabel("Include \(p.title)").accessibilityValue(included ? "Included" : "Excluded")
                                 }
                             }
                             Text("\(store.workspace.briefTasks.count) open actions · urgent first").font(.system(size: 11)).foregroundStyle(.secondary)
                             Toggle("Send each morning", isOn: Binding(get: { store.workspace.settings.digestEnabled }, set: { v in store.change { $0.settings.digestEnabled = v } }))
-                                .toggleStyle(.switch).controlSize(.small).font(.system(size: 12))
+                                .toggleStyle(FullRowToggleStyle()).controlSize(.small).font(.system(size: 12))
                             if store.workspace.settings.digestEnabled {
                                 DatePicker("Send at", selection: time, displayedComponents: [.hourAndMinute]).datePickerStyle(.stepperField).font(.system(size: 12))
                                 HStack {
@@ -248,7 +248,7 @@ private struct SettingsDisclosureStyle: DisclosureGroupStyle {
                         .rotationEffect(.degrees(configuration.isExpanded ? 90 : 0)).foregroundStyle(.secondary)
                     configuration.label
                 }.frame(maxWidth: .infinity, minHeight: 34, alignment: .leading).contentShape(Rectangle())
-            }.buttonStyle(.plain)
+            }.buttonStyle(FullHitButtonStyle())
                 .accessibilityValue(configuration.isExpanded ? "Expanded" : "Collapsed")
             if configuration.isExpanded { configuration.content }
         }

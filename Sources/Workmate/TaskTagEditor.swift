@@ -25,13 +25,14 @@ struct TaskTagEditor: View {
                 ScrollView(.horizontal) {
                     HStack(spacing: 7) {
                         ForEach(tags, id: \.self) { tag in
-                            HStack(spacing: 7) {
-                                Text("#" + tag).lineLimit(1)
-                                Button { tags.removeAll { $0 == tag } } label: { Image(systemName: "xmark").font(.system(size: 8, weight: .semibold)) }
-                                    .buttonStyle(.plain).accessibilityLabel("Remove tag " + tag)
-                            }.font(.system(size: 11, weight: .medium)).foregroundStyle(Palette.accent)
-                                .padding(.horizontal, 10).padding(.vertical, 7)
-                                .background(Palette.accent.opacity(0.10), in: Capsule())
+                            Button { tags.removeAll { $0 == tag } } label: {
+                                HStack(spacing: 7) {
+                                    Text("#" + tag).lineLimit(1)
+                                    Image(systemName: "xmark").font(.system(size: 8, weight: .semibold))
+                                }.font(.system(size: 11, weight: .medium)).foregroundStyle(Palette.accent)
+                                    .padding(.horizontal, 10).padding(.vertical, 7)
+                                    .background(Palette.accent.opacity(0.10), in: Capsule())
+                            }.buttonStyle(FullHitButtonStyle()).accessibilityLabel("Remove tag " + tag)
                         }
                     }
                 }.scrollIndicators(.hidden)
@@ -52,7 +53,7 @@ struct TaskTagEditor: View {
                                 Spacer()
                                 Image(systemName: "plus").font(.system(size: 10)).foregroundStyle(Palette.accent)
                             }.font(.system(size: 12)).padding(.horizontal, 11).padding(.vertical, 8).contentShape(Rectangle())
-                        }.buttonStyle(.plain).accessibilityLabel("Add tag " + name)
+                        }.buttonStyle(FullHitButtonStyle()).accessibilityLabel("Add tag " + name)
                     }
                 }.background(Palette.field, in: RoundedRectangle(cornerRadius: 10))
             }

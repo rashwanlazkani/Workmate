@@ -17,7 +17,7 @@ struct NativeSearchField: View {
             if !text.isEmpty {
                 Button { text = ""; focused = true } label: {
                     Image(systemName: "xmark.circle.fill").font(.system(size: 14)).foregroundStyle(.tertiary)
-                }.buttonStyle(.plain).accessibilityLabel("Clear search").help("Clear search")
+                }.buttonStyle(FullHitButtonStyle()).accessibilityLabel("Clear search").help("Clear search")
             }
         }
         .padding(.horizontal, 15).frame(height: 42)

@@ -134,7 +134,7 @@ struct WorkspaceView: View {
                         Text("NOTES").font(.system(size: 10, weight: .medium)).tracking(1.7).foregroundStyle(Palette.muted)
                         Spacer()
                         Button { addColumn.toggle() } label: { Label("Add column", systemImage: "rectangle.split.2x1") }
-                            .buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(.secondary)
+                            .buttonStyle(FullHitButtonStyle()).font(.system(size: 12)).foregroundStyle(.secondary)
                             .popover(isPresented: $addColumn, arrowEdge: .bottom) {
                                 NoteChooser { id in store.openNote(id); addColumn = false }
                                     .environmentObject(store)
@@ -172,18 +172,18 @@ struct WorkspaceView: View {
                             }
                             if tasks.count > 6 {
                                 Button(allTasks ? "Show less" : "Show \(tasks.count - 6) more") { allTasks.toggle() }
-                                    .buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary).padding(.top, 15)
+                                    .buttonStyle(FullHitButtonStyle()).font(.system(size: 11)).foregroundStyle(.secondary).padding(.top, 15)
                             }
                         }
                     }.scrollIndicators(.hidden)
                     Button { archiveShown = true } label: {
                         Label("Archive · \(store.workspace.tasks.filter { $0.isArchived }.count)", systemImage: "archivebox")
-                    }.buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
+                    }.buttonStyle(FullHitButtonStyle()).font(.system(size: 11)).foregroundStyle(.secondary)
                         .help("View and restore completed tasks")
                         .popover(isPresented: $archiveShown, arrowEdge: .leading) { ArchiveView().environmentObject(store) }
                     if store.workspace.settings.digestEnabled {
                         Button { Task { await store.sendBrief() } } label: { Label("Send daily brief", systemImage: "paperplane") }
-                            .buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(Palette.muted).padding(.bottom, 12)
+                            .buttonStyle(FullHitButtonStyle()).font(.system(size: 11)).foregroundStyle(Palette.muted).padding(.bottom, 12)
                     }
                 }.frame(width: 265).padding(.leading, 26).padding(.top, 40)
             }.padding(.horizontal, 30).padding(.top, 26).padding(.bottom, 28)
@@ -214,7 +214,7 @@ struct NoteColumn: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 Button { chooseNote = true } label: { Label("Your notes", systemImage: "doc.text") }
-                    .buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(Palette.muted)
+                    .buttonStyle(FullHitButtonStyle()).font(.system(size: 11)).foregroundStyle(Palette.muted)
                     .popover(isPresented: $chooseNote) { NoteChooser { id in store.activeColumn = note.id; store.openNote(id, beside: false); chooseNote = false }.environmentObject(store) }
                 Spacer()
                 Menu {
@@ -225,7 +225,7 @@ struct NoteColumn: View {
                 } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).menuIndicator(.hidden).frame(width: 18).help("Note options")
                 if store.columns.count > 1 {
                     Button { store.closeColumn(note.id) } label: { Image(systemName: "xmark").font(.system(size: 10)) }
-                        .buttonStyle(.plain).foregroundStyle(Palette.muted).help("Close column. Your note stays saved.").accessibilityLabel("Close \(note.displayTitle) column")
+                        .buttonStyle(FullHitButtonStyle()).foregroundStyle(Palette.muted).help("Close column. Your note stays saved.").accessibilityLabel("Close \(note.displayTitle) column")
                 }
             }.padding(.bottom, 22)
             TextField("Untitled note", text: Binding(get: { note.title }, set: { store.updateNote(note.id, title: $0) }))
@@ -252,7 +252,7 @@ struct NoteColumn: View {
                                 Label("Add section", systemImage: "plus").font(.system(size: 12, weight: .medium))
                                     .frame(maxWidth: .infinity).padding(.vertical, 12)
                                     .contentShape(Rectangle())
-                            }.buttonStyle(.plain).foregroundStyle(Palette.accent)
+                            }.buttonStyle(FullHitButtonStyle()).foregroundStyle(Palette.accent)
                                 .background(Palette.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 9))
                                 .padding(.top, 20).disabled(note.contentSections.count >= 50)
                         }.padding(.bottom, 8)
@@ -262,13 +262,7 @@ struct NoteColumn: View {
                     }
                 }
             }
-            HStack {
-                Spacer()
-                if !selected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !extractActions(note.body).isEmpty {
-                    Button { store.addActions(from: note, selected: selected); selected = "" } label: { Label("Make action", systemImage: "arrow.up.right") }
-                        .buttonStyle(.plain).foregroundStyle(Palette.accent).font(.system(size: 11))
-                }
-            }.frame(height: 22).padding(.top, 15)
+
         }
         .padding(.horizontal, 8)
         .onChange(of: titleFocused) { _, focused in if focused { store.activeColumn = note.id } }
