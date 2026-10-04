@@ -84,6 +84,7 @@ public struct Note: Codable, Identifiable, Equatable, Sendable {
     public var id = UUID().uuidString.lowercased()
     public var title = ""
     public var body = ""
+    public var richText: String?
     public var project = ""
     public var updatedAt = Dates.iso()
     public var pinned = false
@@ -185,7 +186,7 @@ public struct Workspace: Codable, Equatable, Sendable {
         guard tasks.count <= 1000, notes.count <= 300, meetings.count <= 500,
               Set(tasks.map(\.id)).count == tasks.count, Set(notes.map(\.id)).count == notes.count,
               tasks.allSatisfy({ UUID(uuidString: $0.id) != nil && !$0.title.isEmpty && $0.title.count <= 500 && ($0.tags?.count ?? 0) <= 20 && ($0.tags ?? []).allSatisfy { $0.count <= 200 } && ($0.remindAt.isEmpty || $0.reminder != nil) }),
-              notes.allSatisfy({ UUID(uuidString: $0.id) != nil && $0.title.count <= 200 && $0.body.count <= 60000 }),
+              notes.allSatisfy({ UUID(uuidString: $0.id) != nil && $0.title.count <= 200 && $0.body.count <= 60000 && ($0.richText?.count ?? 0) <= 800000 }),
               meetings.allSatisfy({ ($0.weeklySchedule == nil || (!$0.weeklySchedule!.isEmpty && $0.weeklySchedule!.allSatisfy(\.isValid) && Set($0.weeklySchedule!.map(\.weekday)).count == $0.weeklySchedule!.count)) && ($0.weekdays == nil || (!$0.weekdays!.isEmpty && $0.weekdays!.allSatisfy { (1...7).contains($0) } && Set($0.weekdays!).count == $0.weekdays!.count)) && UUID(uuidString: $0.id) != nil && !$0.title.isEmpty && $0.title.count <= 200 && Dates.parse($0.startAt) != nil && Dates.parse($0.endAt) != nil && $0.end > $0.start && (0...120).contains($0.reminderMinutes) && TimeZone(identifier: $0.timezone) != nil }),
               TimeZone(identifier: settings.timezone) != nil,
               settings.digestTime.range(of: "^([01][0-9]|2[0-3]):[0-5][0-9]$", options: .regularExpression) != nil,
@@ -196,7 +197,7 @@ public struct Workspace: Codable, Equatable, Sendable {
 }
 public func extractActions(_ text: String) -> [String] {
     text.components(separatedBy: .newlines).compactMap { line in
-        let pattern = #"^\s*(?:[-*]\s*\[\s\]\s*|(?:TODO|ACTION):\s*)(.+)$"#
+        let pattern = #"^\s*(?:[-*]\s*\[\s\]\s*|☐\s*|(?:TODO|ACTION):\s*)(.+)$"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
               let match = regex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
               let range = Range(match.range(at: 1), in: line) else { return nil }

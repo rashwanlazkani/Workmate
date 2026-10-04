@@ -37,6 +37,7 @@ export const noteSchema = z.object({
   id: z.string().uuid(),
   title: z.string().max(200),
   body: z.string().max(60000),
+  richText: z.string().max(800000).optional(),
   project: z.string().max(80),
   updatedAt: z.string(),
   pinned: z.boolean(),

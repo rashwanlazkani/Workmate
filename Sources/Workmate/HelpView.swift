@@ -7,7 +7,7 @@ private struct HelpTopic: Identifiable {
     let detail: String
 }
 private let helpTopics = [
-    HelpTopic(id: "notes", symbol: "rectangle.split.2x1", title: "Notes, side by side", detail: "Press ⌘N to create a note. Use Add column to open another note beside it. Notes save automatically to your Workmate folder in iCloud Drive, or Documents if iCloud is unavailable."),
+    HelpTopic(id: "notes", symbol: "rectangle.split.2x1", title: "Notes, side by side", detail: "Press ⌘N to create a note. Use Add column to open another note beside it. Format notes with bold (⌘B), italic (⌘I), bullets, numbered lists, checklists, and links (⌘K). Click a checkbox to mark it done. Return continues a list; Return on an empty item ends it. Notes save automatically to your Workmate folder in iCloud Drive, or Documents if iCloud is unavailable."),
     HelpTopic(id: "actions", symbol: "checkmark.circle", title: "Actions and priorities", detail: "Type a next step in the Next column and press Return. Click its priority to choose Low, Medium, High or Urgent. Open an action to add lowercase tags; meeting names are suggested. Click a tag to search. Click the circle to complete an action; it moves to Archive, where you can restore it."),
     HelpTopic(id: "reminders", symbol: "bell", title: "Reminders and snooze", detail: "Click Remind me on an action. Pick a quick reminder or a date and time. Mac notifications are included once permission is allowed. Also notify in Telegram is optional for each task. Reminder buttons let you mark the action complete or snooze it for one hour."),
     HelpTopic(id: "meetings", symbol: "calendar", title: "Meetings that fit your week", detail: "Open Meetings → New meeting. Choose One-time or Recurring. Select any combination of weekdays, then set a separate start and end time for each day. Choose how early to be reminded. Link notes using Meeting at the bottom of a note; click a meeting at the top to see its notes and actions together."),
@@ -85,6 +85,7 @@ struct HelpView: View {
             }
         }.padding(24).frame(width: tutorial ? 420 : 480).popoverSurface()
         .onExitCommand { close() }
+        .onDisappear { if tutorial { UserDefaults.standard.set(true, forKey: "workmate.tour.completed") } }
     }
     @ViewBuilder private var tourExample: some View {
         switch page {

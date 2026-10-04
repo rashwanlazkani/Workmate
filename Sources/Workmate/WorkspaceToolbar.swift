@@ -10,27 +10,25 @@ struct WorkspaceToolbar: ToolbarContent {
                 Text(store.status).font(.caption2).foregroundStyle(.secondary)
             }.help(store.status)
         }
-        if let occurrence = store.currentOrNextMeeting {
-            ToolbarItem(placement: .principal) {
-                Button { store.focusMeeting(occurrence.meeting.id) } label: {
+        ToolbarItem(placement: .principal) {
+                Button { store.editingMeeting = nil; store.meetingsShown = true } label: {
                     HStack(spacing: 7) {
-                        Image(systemName: occurrence.isCurrent(at: store.clock) ? "circle.inset.filled" : "calendar")
-                        Text(occurrence.isCurrent(at: store.clock) ? "Now · \(occurrence.meeting.title)" : occurrence.meeting.title)
-                            .lineLimit(1)
-                    }.frame(maxWidth: 220)
-                }.help("Open meeting notes · \(occurrence.start.formatted(date: .abbreviated, time: .shortened))")
-            }
+                        Image(systemName: "calendar")
+                        if let selected = store.focusedMeeting {
+                            Text(selected.title).lineLimit(1).frame(maxWidth: 200)
+                            Image(systemName: "chevron.down").font(.system(size: 9))
+                        }
+                    }.fixedSize(horizontal: true, vertical: false)
+                }.help("Add a meeting or filter by meeting").accessibilityLabel("Calendar")
+                    .popover(isPresented: $store.meetingsShown, arrowEdge: .bottom) {
+                        MeetingsSheet().environmentObject(store).onDisappear { store.editingMeeting = nil }
+                    }
         }
         ToolbarItemGroup(placement: .primaryAction) {
             Button("Search", systemImage: "magnifyingglass") { store.searchShown = true }
                 .help("Search · ⌘F")
                 .popover(isPresented: $store.searchShown, arrowEdge: .bottom) {
                     SearchSheet().environmentObject(store).popoverSurface()
-                }
-            Button("Meetings", systemImage: "calendar") { store.meetingsShown = true }
-                .help("Meetings")
-                .popover(isPresented: $store.meetingsShown, arrowEdge: .bottom) {
-                    MeetingsSheet().environmentObject(store).onDisappear { store.editingMeeting = nil }
                 }
             Button("Help", systemImage: "questionmark.circle") { store.openHelp() }
                 .help("Workmate Help")

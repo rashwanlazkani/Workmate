@@ -206,6 +206,7 @@ struct NoteColumn: View {
     @EnvironmentObject var store: WorkspaceStore
     let note: Note
     @ViewState<String> private var selected = ""
+    @StateObject private var editorController = NoteEditorController()
     @ViewState<Bool> private var chooseNote = false
     @ViewState<Bool> private var confirmDelete = false
     @ViewState<Meeting?> private var newMeeting: Meeting?
@@ -228,6 +229,10 @@ struct NoteColumn: View {
                         .buttonStyle(.plain).foregroundStyle(Palette.muted).help("Close column. Your note stays saved.").accessibilityLabel("Close \(note.displayTitle) column")
                 }
             }.padding(.bottom, 22)
+            TextField("Untitled note", text: Binding(get: { note.title }, set: { store.updateNote(note.id, title: $0) }))
+                .textFieldStyle(.plain).font(.system(size: 25, weight: .medium)).focused($titleFocused)
+                .accessibilityLabel("Note title").padding(.bottom, 15)
+                .focusOnEntry($titleFocused, when: store.activeColumn == note.id)
             let linkedMeetings = store.workspace.meetings.filter { (note.meetingIds ?? []).contains($0.id) }
             if !linkedMeetings.isEmpty {
                 ScrollView(.horizontal) {
@@ -249,11 +254,8 @@ struct NoteColumn: View {
                     }
                 }.scrollIndicators(.hidden).frame(height: 30).padding(.bottom, 14)
             }
-            TextField("Untitled note", text: Binding(get: { note.title }, set: { store.updateNote(note.id, title: $0) }))
-                .textFieldStyle(.plain).font(.system(size: 25, weight: .medium)).focused($titleFocused)
-                .accessibilityLabel("Note title").padding(.bottom, 15)
-                .focusOnEntry($titleFocused, when: store.activeColumn == note.id)
-            NativeNoteEditor(text: Binding(get: { note.body }, set: { store.updateNote(note.id, body: $0) }), selectedText: $selected, onFocus: { store.activeColumn = note.id })
+            NoteFormattingToolbar(controller: editorController)
+            NativeNoteEditor(text: note.body, richText: note.richText, selectedText: $selected, controller: editorController, onChange: { body, richText in store.updateNoteContent(note.id, body: body, richText: richText) }, onFocus: { store.activeColumn = note.id })
                 .overlay(alignment: .topLeading) {
                     if note.body.isEmpty { Text("A thought, a meeting, something to remember…").font(.system(size: 14)).foregroundStyle(Palette.muted).padding(.top, 4).allowsHitTesting(false) }
                 }
@@ -299,54 +301,5 @@ struct NoteColumn: View {
     private func beginMeeting() {
         let start = Calendar.current.nextDate(after: Date(), matching: DateComponents(minute: 0), matchingPolicy: .nextTime) ?? Date().addingTimeInterval(3600)
         newMeeting = Meeting(title: "", start: start, end: start.addingTimeInterval(3600))
-    }
-}
-
-struct NativeNoteEditor: NSViewRepresentable {
-    @Binding var text: String
-    @Binding var selectedText: String
-    var onFocus: () -> Void
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-    func makeNSView(context: Context) -> NSScrollView {
-        let scroll = NSScrollView()
-        scroll.drawsBackground = false; scroll.hasVerticalScroller = true; scroll.autohidesScrollers = true
-        let editor = NSTextView()
-        editor.isRichText = false; editor.drawsBackground = false; editor.font = .systemFont(ofSize: 14)
-        editor.textColor = .white; editor.insertionPointColor = NSColor(Palette.accent)
-        editor.textContainerInset = NSSize(width: 0, height: 4)
-        editor.textContainer?.lineFragmentPadding = 0
-        editor.isVerticallyResizable = true; editor.isHorizontallyResizable = false
-        editor.autoresizingMask = [.width]; editor.textContainer?.widthTracksTextView = true
-        editor.isAutomaticQuoteSubstitutionEnabled = false
-        editor.isAutomaticDashSubstitutionEnabled = false
-        editor.allowsUndo = true
-        let style = NSMutableParagraphStyle(); style.lineSpacing = 7
-        editor.defaultParagraphStyle = style; editor.typingAttributes[.paragraphStyle] = style
-        editor.setAccessibilityLabel("Note content")
-        editor.delegate = context.coordinator; editor.string = text
-        scroll.documentView = editor
-        return scroll
-    }
-    func updateNSView(_ scroll: NSScrollView, context: Context) {
-        context.coordinator.parent = self
-        guard let editor = scroll.documentView as? NSTextView else { return }
-        if editor.string != text {
-            let range = editor.selectedRange(); editor.string = text
-            editor.setSelectedRange(NSRange(location: min(range.location, (text as NSString).length), length: 0))
-        }
-    }
-    final class Coordinator: NSObject, NSTextViewDelegate {
-        var parent: NativeNoteEditor
-        init(_ parent: NativeNoteEditor) { self.parent = parent }
-        func textDidBeginEditing(_ notification: Notification) { parent.onFocus() }
-        func textDidChange(_ notification: Notification) {
-            guard let editor = notification.object as? NSTextView else { return }
-            parent.text = String(editor.string.prefix(60000))
-        }
-        func textViewDidChangeSelection(_ notification: Notification) {
-            guard let editor = notification.object as? NSTextView else { return }
-            let range = editor.selectedRange()
-            if NSMaxRange(range) <= (editor.string as NSString).length { parent.selectedText = (editor.string as NSString).substring(with: range) }
-        }
     }
 }

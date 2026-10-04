@@ -5,52 +5,63 @@ import WorkmateCore
 struct MeetingsSheet: View {
     @EnvironmentObject var store: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
+    @ViewState<String> private var query = ""
+    private var meetings: [Meeting] {
+        store.workspace.meetings.filter { !$0.canceled && (query.isEmpty || $0.title.localizedStandardContains(query)) }
+            .sorted { left, right in
+                let a = left.occurrences(after: store.clock).first?.start ?? .distantFuture
+                let b = right.occurrences(after: store.clock).first?.start ?? .distantFuture
+                return a == b ? left.title.localizedStandardCompare(right.title) == .orderedAscending : a < b
+            }
+    }
     var body: some View {
         if let editing = store.editingMeeting {
             MeetingEditor(meeting: editing).environmentObject(store)
         } else {
-        VStack(alignment: .leading, spacing: 22) {
-            HStack {
-                Text("Meetings").font(.system(size: 21, weight: .medium))
-                Spacer()
-                Button("New meeting") { store.createMeeting() }
-                PopoverCloseButton { dismiss() }
-            }
-            if store.agenda.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("A little preparation goes a long way.").font(.system(size: 15))
-                    Text("Add a meeting here, or connect a calendar in Settings. Your notes and actions can stay with the meeting.").font(.system(size: 12)).foregroundStyle(.secondary)
-                }.padding(.vertical, 30)
-            } else {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(Array(store.agenda.prefix(25))) { occurrence in
-                            HStack(alignment: .top, spacing: 18) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(occurrence.start, format: .dateTime.weekday(.abbreviated).day().month(.abbreviated)).font(.system(size: 11)).foregroundStyle(.secondary)
-                                    Text("\(occurrence.start.formatted(date: .omitted, time: .shortened)) – \(occurrence.end.formatted(date: .omitted, time: .shortened))").font(.system(size: 12)).monospacedDigit()
-                                }.frame(width: 140, alignment: .leading)
-                                Button {
-                                    store.focusMeeting(occurrence.meeting.id); dismiss()
-                                } label: {
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        Text(occurrence.meeting.title).font(.system(size: 14, weight: .medium))
-                                        Text(occurrence.isCurrent(at: store.clock) ? "Happening now" : occurrence.meeting.recurrence == "weekly" ? "Weekly · \(occurrence.meeting.reminderMinutes) min reminder" : "\(occurrence.meeting.reminderMinutes) min reminder")
-                                            .font(.system(size: 11)).foregroundStyle(.secondary)
-                                    }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-                                }.buttonStyle(.plain)
-                                Button { store.editingMeeting = occurrence.meeting } label: { Image(systemName: "ellipsis") }.buttonStyle(.plain).help("Edit meeting")
-                            }.padding(.vertical, 15)
-                            Divider()
+            VStack(alignment: .leading, spacing: 16) {
+                HStack { Text("Calendar").font(.system(size: 18, weight: .semibold)); Spacer(); PopoverCloseButton { dismiss() } }
+                TextField("Find a meeting…", text: $query).modernTextField(autofocus: true).accessibilityLabel("Find a meeting")
+                Button { store.createMeeting() } label: {
+                    Label("New meeting", systemImage: "plus").frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                }.buttonStyle(.plain).foregroundStyle(Palette.accent).padding(.vertical, 4)
+                Divider().overlay(Palette.line)
+                if meetings.isEmpty {
+                    Text(query.isEmpty ? "Add your first meeting to keep its notes and actions together." : "No matching meetings.")
+                        .font(.system(size: 13)).foregroundStyle(.secondary).padding(.vertical, 16)
+                } else {
+                    Text("FILTER BY MEETING").font(.system(size: 10, weight: .semibold)).tracking(1).foregroundStyle(.secondary)
+                    ScrollView {
+                        VStack(spacing: 4) {
+                            ForEach(meetings) { meeting in
+                                HStack(spacing: 12) {
+                                    Button { store.focusMeeting(meeting.id); dismiss() } label: {
+                                        HStack(spacing: 10) {
+                                            Image(systemName: "calendar").foregroundStyle(Palette.accent)
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(meeting.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
+                                                if let next = meeting.occurrences(after: store.clock).first {
+                                                    Text(next.isCurrent(at: store.clock) ? "Happening now" : next.start.formatted(date: .abbreviated, time: .shortened))
+                                                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                                                } else { Text("Notes & actions").font(.system(size: 11)).foregroundStyle(.secondary) }
+                                            }
+                                            Spacer()
+                                            if store.meetingFocusID == meeting.id { Image(systemName: "checkmark").foregroundStyle(Palette.accent) }
+                                        }.padding(.vertical, 10).contentShape(Rectangle())
+                                    }.buttonStyle(.plain).accessibilityLabel("Filter by " + meeting.title)
+                                    Button { store.editingMeeting = meeting } label: { Image(systemName: "ellipsis").frame(width: 24, height: 28).contentShape(Rectangle()) }
+                                        .buttonStyle(.plain).foregroundStyle(.secondary).help("Edit meeting").accessibilityLabel("Edit " + meeting.title)
+                                }
+                            }
                         }
-                    }
-                }.frame(height: 320)
-            }
-            HStack {
-                Button { dismiss(); store.settingsShown = true } label: { Label("Connect a calendar", systemImage: "calendar.badge.plus") }.font(.system(size: 12))
-                Spacer()
-            }
-        }.padding(24).frame(width: 540).popoverSurface().modernButtonStyle()
+                    }.frame(maxHeight: 290)
+                }
+                Divider().overlay(Palette.line)
+                HStack {
+                    Button("All notes") { store.meetingFocusID = nil; store.filterQuery = ""; dismiss() }.buttonStyle(.plain)
+                    Spacer()
+                    Button("Connect calendar") { dismiss(); store.settingsSection = "calendars"; store.settingsShown = true }.buttonStyle(.plain)
+                }.font(.system(size: 11)).foregroundStyle(.secondary)
+            }.padding(22).frame(width: 380).popoverSurface()
         }
     }
 }

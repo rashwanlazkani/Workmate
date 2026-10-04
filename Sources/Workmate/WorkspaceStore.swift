@@ -191,7 +191,14 @@ import WorkmateCore
         change { w in
             guard let i = w.notes.firstIndex(where: { $0.id == id }) else { return }
             if let title { w.notes[i].title = String(title.prefix(200)) }
-            if let body { w.notes[i].body = String(body.prefix(60000)) }
+            if let body { w.notes[i].body = String(body.prefix(60000)); w.notes[i].richText = nil }
+            w.notes[i].updatedAt = Dates.iso()
+        }
+    }
+    func updateNoteContent(_ id: String, body: String, richText: String?) {
+        change { w in
+            guard let i = w.notes.firstIndex(where: { $0.id == id }) else { return }
+            w.notes[i].body = body; w.notes[i].richText = richText
             w.notes[i].updatedAt = Dates.iso()
         }
     }
