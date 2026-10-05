@@ -4,7 +4,7 @@ Workmate is a native **SwiftUI + AppKit** macOS app. The client is entirely Swif
 
 ## Build locally
 
-Requires macOS 14+ and a Swift 6 toolchain (Xcode 16+ or compatible Command Line Tools). Apple Intelligence features additionally require supported hardware and macOS 26+.
+The built app supports macOS 14+. Building requires **Xcode 26+ (Swift 6.2+ and the macOS 26 SDK)** or matching Command Line Tools, even when targeting older macOS versions. Apple Intelligence additionally requires supported hardware and macOS 26+.
 
 ```sh
 git clone https://github.com/rashwanlazkani/Workmate.git

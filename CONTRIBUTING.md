@@ -4,7 +4,7 @@ Open an issue to discuss a bug or a substantial feature before sending a pull re
 
 ## Checks
 
-- Native: `zsh Scripts/test.sh` and `zsh Scripts/build.sh` on macOS with Swift 6.
+- Native: `zsh Scripts/test.sh` and `zsh Scripts/build.sh` with Xcode 26+ / Swift 6.2+ and the macOS 26 SDK.
 - Backend changes: `cd Cloud && npm ci && npm run check` with Node 22+.
 - Never deploy the backend as part of ordinary tests; integration tests require your own AWS account.
 
