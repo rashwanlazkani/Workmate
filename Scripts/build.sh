@@ -13,9 +13,10 @@ chmod -R u+w "$app/Contents/Resources/ThirdParty"
 cp Resources/ThirdParty/* "$app/Contents/Resources/ThirdParty/"
 rm -f "$app/Contents/Resources/CloudConfig.json"
 # The bundle icon is used before launch; do not replace it after startup.
-# Remove the legacy resource when reusing a build directory.
-rm -f "$app/Contents/Resources/AppIcon.icns"
 cp Resources/WorkmateBlue.icns "$app/Contents/Resources/"
+# Already-running versions and cached registrations may still request the old name.
+# Keep that compatibility resource blue too; new launches use WorkmateBlue.icns.
+cp Resources/WorkmateBlue.icns "$app/Contents/Resources/AppIcon.icns"
 # Use your own stable identity to preserve macOS privacy approvals across updates.
 # Local source builds work without an Apple Developer certificate.
 signing_identity="${WORKMATE_SIGNING_IDENTITY:--}"
