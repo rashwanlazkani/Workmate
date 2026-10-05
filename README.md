@@ -1,6 +1,43 @@
 # Workmate for Mac
 
+**A native home for notes, meetings, and next steps.**
+
+[![Checks](https://github.com/rashwanlazkani/Workmate/actions/workflows/checks.yml/badge.svg)](https://github.com/rashwanlazkani/Workmate/actions/workflows/checks.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-5482FF)](LICENSE)
+![macOS 14+](https://img.shields.io/badge/macOS-14%2B-1F1F24)
+
+[Get started](#build-locally) · [Screenshots](#screenshots) · [Optional AWS setup](Cloud/README.md) · [Contribute](CONTRIBUTING.md)
+
 Workmate is a native **SwiftUI + AppKit** macOS app. The client is entirely Swift, with no web view, JavaScript runtime, or local server. Node is only needed if you maintain the optional AWS backend.
+
+![Workmate’s dark native macOS workspace showing two note columns, sections, a linked design meeting, and prioritized tasks with tags](docs/images/workspace.png)
+
+- **Write and organize:** rich text, checklists, named columns, and sections with their own meeting tags.
+- **Keep the next step visible:** prioritized tasks, reminders, completion, and a searchable archive.
+- **Find the context:** search notes, meetings, and tags with highlighted matching snippets.
+- **Choose your extras:** optional AI with your own key and monthly allowance; optional AWS in your own account.
+
+## Screenshots
+
+The screenshots below show the actual native app with fictional demo notes. Click an image to view it at full size.
+
+<details>
+<summary><strong>Search across notes, meetings, and tasks</strong></summary>
+
+Search results show the matching section, highlighted text, and related tasks. Ordinary search runs locally; “Ask your notes” is optional.
+
+![Search for design showing a matching meeting, a highlighted snippet in Team meetings, and a tagged action](docs/images/search.png)
+
+</details>
+
+<details>
+<summary><strong>Bring your own AI key and choose a monthly maximum</strong></summary>
+
+Choose Apple Intelligence, OpenAI, or Anthropic. Cloud providers use your own API key, stored in Keychain. The editable allowance defaults to $5 per month for Workmate on this Mac; set it to $0 to disable paid AI. It is not a provider-wide billing cap.
+
+![AI settings showing OpenAI, an empty API key field, and an editable five-dollar monthly allowance with zero usage](docs/images/ai-settings.png)
+
+</details>
 
 ## Build locally
 
