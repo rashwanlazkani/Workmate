@@ -27,10 +27,14 @@ codesign --verify --deep --strict "$app"
 # Publish one app bundle without overwriting the executable of a running app.
 stage=$(mktemp -d "$PWD/.workmate-build.XXXXXX")
 trap 'rm -rf "$stage"' EXIT
-ditto --norsrc "$app" "$stage/Workmate.app"
+ditto --norsrc --noextattr "$app" "$stage/Workmate.app"
 if [[ -d Workmate.app ]]; then mv Workmate.app "$stage/previous.app"; fi
 if ! mv "$stage/Workmate.app" Workmate.app; then
   if [[ -d "$stage/previous.app" ]]; then mv "$stage/previous.app" Workmate.app; fi
   exit 1
 fi
+# Finder/iCloud can retain old bundle metadata at a replaced Desktop path.
+xattr -dr com.apple.FinderInfo Workmate.app 2>/dev/null || true
+xattr -dr com.apple.ResourceFork Workmate.app 2>/dev/null || true
+codesign --verify --deep --strict Workmate.app
 echo "Built $PWD/Workmate.app"
