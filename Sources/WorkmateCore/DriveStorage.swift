@@ -4,14 +4,19 @@ import Foundation
 public struct DriveConfiguration: Codable, Equatable, Sendable {
     public var version = 1
     public var workspaceID = UUID().uuidString.lowercased()
-    public var apiURL = "https://example.invalid"
+    public var apiURL = ""
     public var serviceToken: String?
-    public var backupEnabled = true
+    public var backupEnabled = false
     public var columns: [String] = []
     public var selectedCalendars: [String] = []
     public var intelligenceEnabled = true
     public init() {}
-    public var serviceReady: Bool { backupEnabled && !(serviceToken ?? "").isEmpty }
+    public var serviceReady: Bool {
+        guard backupEnabled, !(serviceToken ?? "").isEmpty,
+              let url = URL(string: apiURL), url.scheme == "https", url.host != nil,
+              url.user == nil, url.password == nil, url.query == nil, url.fragment == nil else { return false }
+        return true
+    }
 }
 
 public struct WorkspaceMerge {

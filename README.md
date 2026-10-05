@@ -2,23 +2,50 @@
 
 Workmate is a native **SwiftUI + AppKit** macOS app. The client is entirely Swift, with no web view, JavaScript runtime, or local server. Node is only needed if you maintain the optional AWS backend.
 
-## Open and build
+## Build locally
 
-Open `Workmate.app`, or open `Package.swift` in Xcode to work on the source. From this folder:
+Requires macOS 14+ and a Swift 6 toolchain (Xcode 16+ or compatible Command Line Tools). Apple Intelligence features additionally require supported hardware and macOS 26+.
 
 ```sh
-zsh Scripts/build.sh
+git clone https://github.com/rashwanlazkani/Workmate.git
+cd Workmate
 zsh Scripts/test.sh
+zsh Scripts/build.sh
+open Workmate.app
 ```
 
-The build script publishes one `Workmate.app` here. Builds use a stable Apple Development signing identity so macOS can retain Documents/calendar approvals across updates. Set `WORKMATE_SIGNING_IDENTITY` to your own valid signing identity when building on another Mac; the script intentionally does not silently fall back to ad-hoc signing. Switching from earlier ad-hoc builds may require one final macOS approval. Intermediate build products stay in macOS's temporary directory. The test script includes the Swift Testing plugin workaround needed by some Command Line Tools installations. No third-party Swift packages are required. The app requires macOS 14 or later; Apple Intelligence features require a supported Mac and macOS 26 or later.
+**No account, API key, AWS deployment, Node installation, or paid Apple Developer membership is needed for the native app.** Notes, sections, rich text, search, tasks, meetings and local notifications work independently. Files use your iCloud Drive when available, otherwise local Documents.
+
+The script produces `Workmate.app` with ad-hoc signing by default. macOS may ask for privacy permissions again after each ad-hoc rebuild. For stable permissions, use your own signing identity:
+
+```sh
+WORKMATE_SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" zsh Scripts/build.sh
+```
+
+Build output is kept in the macOS temporary directory. No third-party Swift packages are required. Source builds are not notarized distribution releases.
+
+## Optional services
+
+| Feature | What you provide | Required? |
+| --- | --- | --- |
+| Local notes, search and Mac reminders | Nothing | Built in |
+| iCloud Drive file sync | Your Apple Account / iCloud Drive | Optional |
+| Apple Intelligence | Supported Mac and macOS | Optional |
+| OpenAI or Anthropic | Your API key; editable monthly allowance | Optional |
+| S3 backup and Telegram delivery while the app is closed | **Your AWS account and your own backend deployment**; your Telegram bot | Optional |
+
+Workmate does not provide a shared hosted backend. No maintainer AWS account or endpoint is configured in new installs. AWS charges are separate from the in-app AI allowance. See [AWS setup](Cloud/README.md), [contributing](CONTRIBUTING.md), and [security](SECURITY.md).
+
+## License
+
+[MIT](LICENSE). Contributions are welcome.
 
 ## Project layout
 
 - `Sources/Workmate/` — native interface, calendars, notifications, and on-device AI.
 - `Sources/WorkmateCore/` — workspace models, storage, search, and cloud client.
 - `Tests/` — Swift tests.
-- `Resources/` — app metadata, icon, and cloud configuration.
+- `Resources/` — app metadata and icon.
 - `Scripts/` — native build, test, and icon tools.
 - `Cloud/` — optional AWS backend source and deployment tools. See `Cloud/README.md`.
 
@@ -49,9 +76,12 @@ Existing native data is migrated automatically on first launch, without replacin
 
 ## AWS backup and Telegram
 
+Disabled by default. Deploy the backend to **your own AWS account**, then run the provisioning command in [Cloud/README.md](Cloud/README.md) against your private Workmate folder. No app rebuild is needed. AWS administrator credentials stay in your CLI profile, never in Workmate. Existing users keep their explicitly provisioned connections.
+
+
 The private connection lives in the Workmate folder, so another Mac using the same iCloud Drive can use it without a new account. **Keep config.json private**: its key grants access to this workspace's AWS copy and Telegram connection. It contains no AWS administrator credentials and is never bundled in the application or project.
 
-AWS **eu-north-1 (Stockholm)** keeps immutable, encrypted S3 snapshots and a DynamoDB copy for reminder scheduling and Telegram updates. iCloud files remain the main workspace. S3 has versioning and blocks public access. Backup failures leave local edits intact and retry while the app runs. Settings shows backup status and has **Back up now**. Pausing backup stops future uploads; reminders already scheduled in AWS may still arrive.
+Your AWS deployment (default region **eu-north-1 / Stockholm**) keeps immutable, encrypted S3 snapshots and a DynamoDB copy for reminder scheduling and Telegram updates. iCloud files remain the main workspace. S3 has versioning and blocks public access. Backup failures leave local edits intact and retry while the app runs. Settings shows backup status and has **Back up now**. Pausing backup stops future uploads; reminders already scheduled in AWS may still arrive.
 
 Under **Settings → Telegram**, open BotFather, send `/newbot`, paste its token, connect, then open the pairing link and tap Start. Bot tokens are held in AWS Secrets Manager and excluded from workspace backups. Each action's reminder offers **Also notify in Telegram**. Mac notifications are always included, subject to macOS notification permission. Choose which priorities to send under **Daily brief**.
 

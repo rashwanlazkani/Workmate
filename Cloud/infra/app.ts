@@ -30,12 +30,6 @@ export class WorkmateStack extends cdk.Stack {
       timeToLiveAttribute: "expiresAt",
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
-    const bucket = new s3.Bucket(this, "Website", {
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      enforceSSL: true,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
     const backups = new s3.Bucket(this, "DriveBackups", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -43,82 +37,97 @@ export class WorkmateStack extends cdk.Stack {
       versioned: true,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
-    const headers = new cloudfront.ResponseHeadersPolicy(this, "Headers", {
-      securityHeadersBehavior: {
-        contentTypeOptions: { override: true },
-        strictTransportSecurity: {
-          accessControlMaxAge: cdk.Duration.days(365),
-          includeSubdomains: true,
-          override: true,
+    // Only existing pre-native installations need the retained website/login resources.
+    const legacy = this.node.tryGetContext("legacyWeb") === "true";
+    let bucket: s3.Bucket | undefined;
+    let distribution: cloudfront.Distribution | undefined;
+    let pool: cognito.UserPool | undefined;
+    let poolClient: cognito.UserPoolClient | undefined;
+    if (legacy) {
+      bucket = new s3.Bucket(this, "Website", {
+        blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+        encryption: s3.BucketEncryption.S3_MANAGED,
+        enforceSSL: true,
+        removalPolicy: cdk.RemovalPolicy.RETAIN,
+      });
+      const headers = new cloudfront.ResponseHeadersPolicy(this, "Headers", {
+        securityHeadersBehavior: {
+          contentTypeOptions: { override: true },
+          strictTransportSecurity: {
+            accessControlMaxAge: cdk.Duration.days(365),
+            includeSubdomains: true,
+            override: true,
+          },
+          frameOptions: {
+            frameOption: cloudfront.HeadersFrameOption.DENY,
+            override: true,
+          },
+          referrerPolicy: {
+            referrerPolicy:
+              cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+            override: true,
+          },
+          contentSecurityPolicy: {
+            contentSecurityPolicy:
+              "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.execute-api.eu-north-1.amazonaws.com https://cognito-idp.eu-north-1.amazonaws.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+            override: true,
+          },
         },
-        frameOptions: {
-          frameOption: cloudfront.HeadersFrameOption.DENY,
-          override: true,
-        },
-        referrerPolicy: {
-          referrerPolicy:
-            cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
-          override: true,
-        },
-        contentSecurityPolicy: {
-          contentSecurityPolicy:
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.execute-api.eu-north-1.amazonaws.com https://cognito-idp.eu-north-1.amazonaws.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
-          override: true,
-        },
-      },
-    });
-    const distribution = new cloudfront.Distribution(this, "Distribution", {
-      defaultRootObject: "index.html",
-      defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessControl(bucket),
-        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        responseHeadersPolicy: headers,
-        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
-      },
-      additionalBehaviors: {
-        "config.json": {
+      });
+      distribution = new cloudfront.Distribution(this, "Distribution", {
+        defaultRootObject: "index.html",
+        defaultBehavior: {
           origin: origins.S3BucketOrigin.withOriginAccessControl(bucket),
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           responseHeadersPolicy: headers,
-          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         },
-      },
-      errorResponses: [
-        {
-          httpStatus: 403,
-          responseHttpStatus: 200,
-          responsePagePath: "/index.html",
-          ttl: cdk.Duration.seconds(0),
+        additionalBehaviors: {
+          "config.json": {
+            origin: origins.S3BucketOrigin.withOriginAccessControl(bucket),
+            viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+            responseHeadersPolicy: headers,
+            cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          },
         },
-        {
-          httpStatus: 404,
-          responseHttpStatus: 200,
-          responsePagePath: "/index.html",
-          ttl: cdk.Duration.seconds(0),
+        errorResponses: [
+          {
+            httpStatus: 403,
+            responseHttpStatus: 200,
+            responsePagePath: "/index.html",
+            ttl: cdk.Duration.seconds(0),
+          },
+          {
+            httpStatus: 404,
+            responseHttpStatus: 200,
+            responsePagePath: "/index.html",
+            ttl: cdk.Duration.seconds(0),
+          },
+        ],
+        priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
+      });
+      pool = new cognito.UserPool(this, "Users", {
+        selfSignUpEnabled: false,
+        signInAliases: { email: true },
+        autoVerify: { email: true },
+        passwordPolicy: {
+          minLength: 12,
+          requireDigits: true,
+          requireLowercase: true,
+          requireUppercase: true,
+          requireSymbols: true,
         },
-      ],
-      priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
-    });
-    const pool = new cognito.UserPool(this, "Users", {
-      selfSignUpEnabled: false,
-      signInAliases: { email: true },
-      autoVerify: { email: true },
-      passwordPolicy: {
-        minLength: 12,
-        requireDigits: true,
-        requireLowercase: true,
-        requireUppercase: true,
-        requireSymbols: true,
-      },
-      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
-    const poolClient = pool.addClient("Web", {
-      authFlows: { userPassword: true, userSrp: true },
-      preventUserExistenceErrors: true,
-      accessTokenValidity: cdk.Duration.hours(8),
-      idTokenValidity: cdk.Duration.hours(8),
-    });
+        accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+        removalPolicy: cdk.RemovalPolicy.RETAIN,
+      });
+      poolClient = pool.addClient("Web", {
+        authFlows: { userPassword: true, userSrp: true },
+        preventUserExistenceErrors: true,
+        accessTokenValidity: cdk.Duration.hours(8),
+        idTokenValidity: cdk.Duration.hours(8),
+      });
+    }
     const secret = new secrets.Secret(this, "WebhookSecret", {
       generateSecretString: { passwordLength: 48, excludePunctuation: true },
     });
@@ -238,39 +247,47 @@ export class WorkmateStack extends cdk.Stack {
       }),
     );
     const api = new apigw.HttpApi(this, "HttpApi", {
-      corsPreflight: {
-        allowOrigins: [`https://${distribution.distributionDomainName}`],
-        allowMethods: [
-          apigw.CorsHttpMethod.GET,
-          apigw.CorsHttpMethod.PUT,
-          apigw.CorsHttpMethod.POST,
-        ],
-        allowHeaders: ["authorization", "content-type"],
-        maxAge: cdk.Duration.hours(1),
-      },
+      corsPreflight: distribution
+        ? {
+            allowOrigins: [`https://${distribution.distributionDomainName}`],
+            allowMethods: [
+              apigw.CorsHttpMethod.GET,
+              apigw.CorsHttpMethod.PUT,
+              apigw.CorsHttpMethod.POST,
+            ],
+            allowHeaders: ["authorization", "content-type"],
+            maxAge: cdk.Duration.hours(1),
+          }
+        : undefined,
     });
     const integration = new integrations.HttpLambdaIntegration(
       "Handler",
       apiFn,
     );
-    const auth = new authorizers.HttpJwtAuthorizer(
-      "Auth",
-      pool.userPoolProviderUrl,
-      { jwtAudience: [poolClient.userPoolClientId] },
-    );
+    if (pool && poolClient) {
+      const auth = new authorizers.HttpJwtAuthorizer(
+        "Auth",
+        pool.userPoolProviderUrl,
+        { jwtAudience: [poolClient.userPoolClientId] },
+      );
+      api.addRoutes({
+        path: "/api/{proxy+}",
+        methods: [
+          apigw.HttpMethod.GET,
+          apigw.HttpMethod.PUT,
+          apigw.HttpMethod.POST,
+        ],
+        integration,
+        authorizer: auth,
+      });
+    }
     api.addRoutes({
-      path: "/api/{proxy+}",
+      path: "/device/{proxy+}",
       methods: [
         apigw.HttpMethod.GET,
         apigw.HttpMethod.PUT,
         apigw.HttpMethod.POST,
       ],
-      integration,
-      authorizer: auth,
-    });
-    api.addRoutes({
-      path: "/device/{proxy+}",
-      methods: [apigw.HttpMethod.GET, apigw.HttpMethod.PUT, apigw.HttpMethod.POST],
       integration,
     });
     api.addRoutes({
@@ -286,17 +303,20 @@ export class WorkmateStack extends cdk.Stack {
       alarmDescription:
         "Workmate has failed reminder or schedule events. Inspect the failure queue.",
     });
-    const outputs = {
-      WebsiteUrl: `https://${distribution.distributionDomainName}`,
-      BucketName: bucket.bucketName,
-      DistributionId: distribution.distributionId,
+    const outputs: Record<string, string> = {
       ApiUrl: api.apiEndpoint,
-      UserPoolId: pool.userPoolId,
-      ClientId: poolClient.userPoolClientId,
       Region: this.region,
       TableName: table.tableName,
       BackupBucketName: backups.bucketName,
     };
+    if (bucket && distribution && pool && poolClient)
+      Object.assign(outputs, {
+        WebsiteUrl: `https://${distribution.distributionDomainName}`,
+        BucketName: bucket.bucketName,
+        DistributionId: distribution.distributionId,
+        UserPoolId: pool.userPoolId,
+        ClientId: poolClient.userPoolClientId,
+      });
     for (const [key, value] of Object.entries(outputs))
       new cdk.CfnOutput(this, key, { value });
     cdk.Tags.of(this).add("Application", "Workmate");
@@ -304,7 +324,9 @@ export class WorkmateStack extends cdk.Stack {
 }
 const app = new cdk.App();
 new WorkmateStack(app, "Workmate", {
-  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: "eu-north-1" },
-  description:
-    "Workmate private productivity workspace — Stockholm serverless backend",
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.AWS_REGION || "eu-north-1",
+  },
+  description: "Workmate optional self-hosted backend",
 });

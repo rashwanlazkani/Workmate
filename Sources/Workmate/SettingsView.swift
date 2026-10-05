@@ -94,7 +94,7 @@ struct SettingsView: View {
                     Divider()
                     DisclosureGroup(isExpanded: $cloudOpen) {
                         VStack(alignment: .leading, spacing: 13) {
-                            Text("A second copy in private S3 storage in Stockholm. Your iCloud files remain the main workspace. AWS schedules Telegram reminders and delivers them while Workmate is closed.")
+                            Text("Optional backup and Telegram delivery in your own AWS account. You control the deployment and pay its AWS charges. Your iCloud files remain the main workspace.")
                                 .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                             if store.driveConfiguration.serviceToken != nil {
                                 Toggle("Keep an AWS backup", isOn: Binding(get: { store.driveConfiguration.backupEnabled }, set: { enabled in
@@ -111,8 +111,9 @@ struct SettingsView: View {
                                     Text("Backup updates are paused. Reminders already sent to AWS may still arrive.").font(.system(size: 11)).foregroundStyle(.secondary)
                                 }
                             } else {
-                                Text("This Workmate folder has no AWS connection yet. Its private connection is stored in config.json — no email, password or Workmate account is needed.")
+                                Text("Workmate works without AWS. To enable backups and Telegram, deploy the optional backend in your own AWS account, then provision this folder’s config.json. Never enter AWS access keys in Workmate.")
                                     .font(.system(size: 12)).foregroundStyle(.secondary)
+                                Link("Set up your own AWS backend ↗", destination: URL(string: "https://github.com/rashwanlazkani/Workmate/blob/main/Cloud/README.md")!)
                                 Button("Show configuration folder") { store.showFiles() }
                             }
                         }.padding(.top, 12)
@@ -140,7 +141,7 @@ struct SettingsView: View {
                                 if store.telegram.connected { Button("Disconnect…") { disconnecting = true }.font(.system(size: 11)) }
                                 if let error = store.telegram.lastError { Text(error).font(.system(size: 11)).foregroundStyle(.orange) }
                             } else {
-                                Text("Enable AWS backup to connect Telegram. It schedules your Telegram reminders in AWS; no separate sign-in is needed.").font(.system(size: 12)).foregroundStyle(.secondary)
+                                Text("Set up the optional backend in your own AWS account to connect Telegram. Local Mac reminders work without AWS.").font(.system(size: 12)).foregroundStyle(.secondary)
                                 Button("Show AWS backup") { withAnimation { cloudOpen = true; proxy.scrollTo("backup", anchor: .top) } }
                             }
                         }.padding(.top, 16)

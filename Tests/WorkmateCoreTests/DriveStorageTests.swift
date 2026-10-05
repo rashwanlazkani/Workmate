@@ -5,6 +5,24 @@ import Testing
 struct DriveStorageTests {
     private func root() -> URL { FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString) }
 
+    @Test func cloudRequiresExplicitOptInAndValidEndpoint() throws {
+        var config = DriveConfiguration()
+        #expect(config.apiURL.isEmpty)
+        #expect(!config.backupEnabled)
+        #expect(!config.serviceReady)
+        config.serviceToken = "test-workspace-key"
+        config.apiURL = "https://example.com"
+        #expect(!config.serviceReady)
+        config.backupEnabled = true
+        #expect(config.serviceReady)
+        let saved = try JSONEncoder().encode(config)
+        #expect(try JSONDecoder().decode(DriveConfiguration.self, from: saved).serviceReady)
+        for endpoint in ["", "http://example.com", "https://user:password@example.com", "https://example.com?token=x"] {
+            config.apiURL = endpoint
+            #expect(!config.serviceReady)
+        }
+    }
+
     @Test func migrationPreservesLegacyAndNeverReplacesExistingDriveData() throws {
         let folder = root(); defer { try? FileManager.default.removeItem(at: folder) }
         let legacy = try WorkspaceFiles(directory: folder.appendingPathComponent("legacy"))

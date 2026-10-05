@@ -1,0 +1,35 @@
+name: Checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - run: zsh Scripts/test.sh
+      - run: zsh Scripts/build.sh
+      - run: brew install gitleaks && gitleaks git --log-opts="--all" --redact
+  cloud:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Cloud/package-lock.json
+      - run: npm ci
+        working-directory: Cloud
+      - run: npm run check
+        working-directory: Cloud
+        env:
+          AWS_EC2_METADATA_DISABLED: 'true'

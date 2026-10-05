@@ -1,42 +1,63 @@
-# Optional Workmate cloud backend
+# Optional AWS backend — bring your own account
 
-The macOS app is native Swift and runs without Node. This folder contains the TypeScript source for its AWS backend: a private workspace-key API, S3 backups, DynamoDB storage, EventBridge Scheduler reminders, and Telegram delivery. The native app saves its main files in iCloud Drive and does not use a Workmate sign-in. Application services and data use **eu-north-1 (Stockholm)**.
+Workmate is fully usable without this folder. AWS is disabled for new workspaces. Enable it only if you want S3 backups and Telegram reminders while the Mac app is closed. **There is no shared Workmate service: deploy in your own AWS account and pay your own AWS charges.** The app’s AI monthly allowance does not limit AWS costs.
 
-## Develop and deploy
+## 1. Prepare your AWS account
 
-Requires Node 20 or later, AWS CLI credentials, and access to the existing Workmate account:
+Install Node.js 22+, npm, AWS CLI v2, and configure a named AWS CLI profile using your own account (for example `aws configure sso --profile workmate`). Sign in if required, then verify the account:
+
+```sh
+aws sso login --profile workmate
+aws sts get-caller-identity --profile workmate
+```
+
+Deployment needs CloudFormation/CDK provisioning permissions for IAM, Lambda, API Gateway, DynamoDB, S3, EventBridge Scheduler, Secrets Manager, SQS and CloudWatch. Administrator access in a dedicated personal AWS account is one setup option; do not put access keys in the app, source files, issues or screenshots. Configure an AWS Budget separately; billing alerts are not a hard spending cap.
+
+## 2. Deploy
+
+From the repository:
 
 ```sh
 cd Cloud
 npm ci
 npm run check
-AWS_PROFILE=default npm run deploy
+AWS_PROFILE=workmate AWS_REGION=eu-north-1 npm run deploy
 ```
 
-`check` type-checks the backend, runs unit tests, and synthesizes CloudFormation. Deployment bootstraps CDK when necessary, deploys the Workmate stack, and updates `../Resources/CloudConfig.json`. Rebuild the native app afterwards with `zsh Scripts/build.sh` from the project root. The deployment script does not publish a website.
+Use your chosen AWS region consistently when deploying and provisioning. The script displays the target account, bootstraps CDK if needed, and asks for approval of security permission changes. Review the deployment before approving. `cdk-outputs.json` stays local and ignored by Git. No endpoint or credentials are written into the application bundle or tracked source.
 
-After the native app creates its iCloud folder, provision its private connection with your existing AWS administrator session:
+New deployments create a private, encrypted, versioned S3 backup bucket; DynamoDB with point-in-time recovery; API/worker/planner Lambdas; an HTTP API; EventBridge schedules; Secrets Manager storage; a failure queue and alarm. No EC2 instance, Raspberry Pi, website, Cognito login or always-running container is needed.
+
+## 3. Connect your private workspace
+
+Open the native app once. In **Settings → AWS backup → Show configuration folder**, locate its `config.json` (usually iCloud Drive → Documents → Workmate). Then run:
 
 ```sh
-npm run provision:drive -- "/path/to/iCloud Drive/Documents/Workmate/config.json"
+AWS_PROFILE=workmate AWS_REGION=eu-north-1 npm run provision:drive -- "/absolute/path/to/Workmate/config.json"
 ```
 
-This saves a random 256-bit workspace key only into the user's private config file and its SHA-256 hash into DynamoDB. It never emails an invitation or includes a key in the app bundle. Existing connections are checked instead of silently rotated. The `/device` route authenticates the key and binds it to one workspace before serving any data. Revocation: set the matching `DEVICE#<workspaceID>` record's `value.enabled` to false.
+This creates a random 256-bit workspace access key in that private file and stores only its SHA-256 hash in your DynamoDB table. It enables backup explicitly. The running app reloads the configuration; no rebuild or Workmate account is needed. Existing keys are validated, never silently rotated. Switching an already connected workspace to a different deployment is refused to prevent accidental data upload to another account.
 
-`npm run test:drive` provisions an isolated temporary workspace, tests the real Swift client and S3 backup, then deletes its test data. It sends no email or Telegram messages. The older Cognito test and invitation scripts remain for compatibility with existing deployments; they are not needed by the current app.
+Keep `config.json` private: it grants access to this workspace’s AWS copy. It syncs through your iCloud Drive for use on your other Macs. AWS CLI administrator credentials are never saved there. Do not provision someone else’s workspace against your account unless you intend to host their data and pay their charges.
 
-Dependencies and synthesis output are generated only for backend development. You can remove `node_modules/` and `cdk.out/` after use; `package-lock.json` preserves reproducible installation.
+## 4. Optional Telegram
 
-## Existing stack compatibility
+After AWS is connected, open **Settings → Telegram**. Create your own bot through BotFather, paste its bot token, and open the pairing link. Bot tokens are stored in your AWS Secrets Manager and excluded from workspace backups. Enable Telegram individually for tasks; local Mac notifications do not require AWS. A bot supports one webhook deployment at a time.
 
-The deployed stack still contains S3 and CloudFront resources from the previous website. Their definitions and existing logical IDs are retained to avoid unintended cloud resource deletion during local project cleanup. The old web client and web publishing scripts have been removed. No AWS resources were deleted by that cleanup.
+DynamoDB changes update EventBridge Scheduler directly. Workers re-read current state to discard stale reminders. Telegram supports completion and one-hour snooze; these edits sync to the Mac when it next connects. There is no external agent. Weekly meetings use their timezone; nonexistent local times during the spring DST transition are skipped by AWS Scheduler.
 
-## Data and reminders
+## Updates and existing installations
 
-For current app data, a `drive-<workspaceID>` identity scopes ownership. S3 snapshots are immutable objects under that workspace prefix; they are written before a workspace update is acknowledged. The private backup bucket is separate from the old website bucket, uses encryption and versioning, and blocks public access. Old Cognito identities remain supported for migration compatibility. DynamoDB manifests use optimistic revisions; workspace content is split into immutable chunks below the item size limit. Changed reminders flow through DynamoDB Streams to a planner Lambda, then EventBridge Scheduler and a delivery Lambda. Workers re-read current state to ignore stale reminders. Completing or deleting tasks removes their schedules.
+Run the same deploy command with the same profile and region. The deployment script detects older stacks with website/Cognito resources and preserves their logical IDs automatically. For a manual `cdk diff` or `cdk deploy` on an older installation, pass `--context legacyWeb=true`; omitting it can remove legacy infrastructure. Fresh installations omit these resources. Each account/region supports one default `Workmate` stack.
 
-Bot tokens live in Secrets Manager and are excluded from workspace backups. Delivery leases reduce duplicate retries, although Telegram has no send-message idempotency key. Failures feed an SQS queue and CloudWatch alarm. DynamoDB point-in-time recovery is enabled; logs retain fourteen days. The table, user pool, and legacy website bucket are retained on stack deletion.
+The current native API uses a workspace-scoped key and has no public registration endpoint. Legacy Cognito scripts remain only for existing installations. `npm run test:drive` is an opt-in integration test against your deployed account: it creates a temporary workspace, exercises the Swift client and backups, then cleans up. It does not send Telegram messages. Unit tests and synthesis require no live deployment.
 
-## Telegram actions
+## Disable or remove
 
-Telegram callbacks validate the paired chat, persist completion or a one-hour snooze, back up the change to S3, and edit the original message with confirmation. Completed tasks remain in Archive. The Mac merges these edits into iCloud at its next sync. Task, meeting and daily brief reminders use EventBridge Scheduler directly; no external runner is required.
+Switch off **Keep an AWS backup** to stop app uploads and downloads. Already scheduled reminders remain active. To stop Telegram delivery, disconnect Telegram before disabling backup. To revoke a workspace key, set its DynamoDB `DEVICE#<workspaceID>` record’s `value.enabled` to `false`, remove its credentials from the private config, and delete its schedules in the `workmate-reminders` schedule group.
+
+For complete teardown, remove schedules in that group, review `cdk destroy`, and inspect retained resources. The workspace table and backup bucket intentionally remain to prevent accidental data loss; delete them separately only after exporting anything you want to keep. Retained storage, secrets, logs and CDK bootstrap assets can continue to incur charges. Never run teardown in someone else’s account.
+
+## Data handling
+
+Workspace identity is `drive-<workspaceID>`. Private immutable S3 snapshots are written before updates are acknowledged. DynamoDB uses optimistic revisions and immutable chunks for large notes. iCloud/local files remain the primary workspace. Failed uploads leave local edits intact. Delivery receipts reduce duplicate sends; Telegram provides no send-message idempotency key, so exactly-once delivery is not guaranteed. Logs retain fourteen days; inspect the failure queue and alarm when delivery fails.

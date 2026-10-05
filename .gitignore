@@ -11,3 +11,15 @@ cdk-outputs.json
 *.app/
 __pycache__/
 *.pyc
+
+# Private deployment and workspace material
+Resources/CloudConfig.json
+config.json
+workspace.json
+connection.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.provisioning
+.gitleaks-report*

@@ -51,12 +51,9 @@ import WorkmateCore
     var isCloud: Bool { !previewMode && driveConfiguration.serviceReady }
     var storageLabel: String { files.usesICloud ? "Saved in iCloud Drive" : "Saved in Documents" }
     var visibleNotes: [Note] { columns.compactMap { id in workspace.notes.first { $0.id == id } } }
-    var configuration: CloudConfig
     private let previewMode: Bool
 
     init() {
-        let resource = Bundle.main.url(forResource: "CloudConfig", withExtension: "json")
-        configuration = resource.flatMap { try? Data(contentsOf: $0) }.flatMap { try? JSONDecoder().decode(CloudConfig.self, from: $0) } ?? .init(region: "eu-north-1", clientId: "example-client-id", apiUrl: "https://example.invalid")
         let testDirectory = ProcessInfo.processInfo.environment["WORKMATE_DATA_DIR"] ?? Bundle.main.object(forInfoDictionaryKey: "WorkmateDataDirectory") as? String
         previewMode = testDirectory != nil
         legacyFiles = try! WorkspaceFiles(directory: testDirectory.map { URL(fileURLWithPath: $0, isDirectory: true) })
