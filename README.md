@@ -8,6 +8,10 @@
 
 [Get started](#build-locally) · [Screenshots](#screenshots) · [Optional AWS setup](Cloud/README.md) · [Contribute](CONTRIBUTING.md)
 
+Work often gets split between meeting notes, task lists, and reminders. Decisions lose their context, follow-ups get buried, and finding what you agreed last week means searching across tools.
+
+Workmate brings your notes, meetings, and next steps into one Mac workspace. Keep notes side by side, link sections to recurring meetings, turn selected text into an action, and search related notes and tasks together. Your files stay in your own Documents or iCloud Drive folder; AI and cloud services are optional.
+
 Workmate is a native **SwiftUI + AppKit** macOS app. The client is entirely Swift, with no web view, JavaScript runtime, or local server. Node is only needed if you maintain the optional AWS backend.
 
 ![Workmate’s dark native macOS workspace showing two note columns, sections, a linked design meeting, and prioritized tasks with tags](docs/images/workspace.png)
