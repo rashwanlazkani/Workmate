@@ -18,6 +18,8 @@ Workmate is a native **SwiftUI + AppKit** macOS app. The client is entirely Swif
 
 ## Main features
 
+- **Markdown:** edit a section’s Markdown with a native preview, paste Markdown as formatted text, import `.md` files, and export a note with all its sections. Headings, emphasis, lists, checkboxes, quotes, code and links are supported.
+
 - **Notes with structure:** write in side-by-side columns with named sections, bold and italic text, bullets, numbered lists, checklists, and links.
 - **Reminders before meetings:** choose how far ahead to receive a Mac notification and open the meeting’s related notes from the reminder. macOS notification permission is required.
 - **Flexible recurring meetings:** schedule one-time meetings or repeat on multiple weekdays, with different start and end times for each day.
@@ -73,7 +75,7 @@ The script produces `Workmate.app` with ad-hoc signing by default. macOS may ask
 WORKMATE_SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" zsh Scripts/build.sh
 ```
 
-Build output is kept in the macOS temporary directory. No third-party Swift packages are required. Source builds are not notarized distribution releases.
+Build output is kept in the macOS temporary directory. Swift Package Manager fetches the Swift project’s native Markdown parser; no JavaScript runtime is needed. Source builds are not notarized distribution releases.
 
 ## Optional services
 
@@ -169,3 +171,11 @@ The shared OpenAI/Anthropic allowance defaults to $5 per UTC calendar month **fo
 Set a different monthly maximum in Settings → AI (USD, up to two decimal places). Set 0 to disable new paid requests. Changing the maximum never clears reservations; lowering it below current usage blocks further requests immediately. The limit is saved with the locked ledger and persists across restarts and month changes.
 
 This local guard is not a provider-account billing guarantee: usage by other apps/Macs, taxes, deleted application data, clock changes and provider price changes are outside its scope. For account-wide control use a dedicated provider account/project and configure the provider's available billing controls. Economy models and rates are pinned in `AIService.swift` (verified October 5, 2026); reassess before changing model IDs. Budget controls must never be bypassed by fallback or retries.
+
+### Markdown notes
+
+Click the **Markdown icon (M↓)** in a note’s formatting toolbar, or choose **Section options → Edit Markdown…**. Write Markdown, switch to **Preview**, then choose **Apply Markdown**. **Paste Markdown** inserts formatted clipboard text at the cursor. Ordinary paste stays unchanged, and ⌘Z undoes an applied edit.
+
+Use **File → Import Markdown…** to create a new note from a UTF-8 `.md` file. Use the note’s **… → Export Markdown…** menu to save the whole note, including its section headings. Original Markdown is retained through saving and optional AWS sync until you edit the rich text; after native edits, Markdown is regenerated from the supported formatting. Tables render as readable text; images show their label and URL without downloading them. HTML is displayed literally. Notes are limited to 60,000 characters.
+
+Select text to reveal **Make action** and the **AI sparkle** above the selection. The sparkle opens writing tools for just that text, with a preview before applying changes.

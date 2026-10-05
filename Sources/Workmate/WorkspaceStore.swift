@@ -221,7 +221,7 @@ import WorkmateCore
         editSections(noteID) { sections in
             guard let index = sections.firstIndex(where: { $0.id == sectionID }) else { return }
             if let title { sections[index].title = String(title.prefix(200)) }
-            if let body { sections[index].body = body; sections[index].richText = richText }
+            if let body { sections[index].body = body; sections[index].richText = richText; sections[index].markdownSource = nil }
         }
     }
     func addSection(_ noteID: String, after sectionID: String? = nil, splitAt: Int? = nil) -> String? {

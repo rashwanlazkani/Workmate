@@ -86,8 +86,9 @@ public struct NoteSection: Codable, Identifiable, Equatable, Sendable {
     public var body: String
     public var meetingIds: [String]?
     public var richText: String?
-    public init(id: String = UUID().uuidString.lowercased(), title: String = "", body: String = "", richText: String? = nil, meetingIds: [String]? = nil) {
-        self.id = id; self.title = title; self.body = body; self.richText = richText; self.meetingIds = meetingIds
+    public var markdownSource: String?
+    public init(id: String = UUID().uuidString.lowercased(), title: String = "", body: String = "", richText: String? = nil, meetingIds: [String]? = nil, markdownSource: String? = nil) {
+        self.id = id; self.title = title; self.body = body; self.richText = richText; self.meetingIds = meetingIds; self.markdownSource = markdownSource
     }
 }
 
@@ -133,7 +134,7 @@ public struct Note: Codable, Identifiable, Equatable, Sendable {
     public var validSections: Bool {
         guard let sections else { return true }
         return !sections.isEmpty && sections.count <= 50 && Set(sections.map(\.id)).count == sections.count && sections.allSatisfy {
-            UUID(uuidString: $0.id) != nil && $0.title.count <= 200 && $0.body.count <= 60000 && ($0.richText?.count ?? 0) <= 800000 && ($0.meetingIds?.count ?? 0) <= 500 && ($0.meetingIds ?? []).allSatisfy { UUID(uuidString: $0) != nil }
+            UUID(uuidString: $0.id) != nil && $0.title.count <= 200 && $0.body.count <= 60000 && ($0.richText?.count ?? 0) <= 800000 && ($0.markdownSource?.count ?? 0) <= 60000 && ($0.meetingIds?.count ?? 0) <= 500 && ($0.meetingIds ?? []).allSatisfy { UUID(uuidString: $0) != nil }
         }
     }
     public var displayTitle: String { title.isEmpty ? String(body.split(separator: "\n").first ?? "Untitled note").prefixString(60) : title }

@@ -34,6 +34,32 @@ import WorkmateCore
         apply(next, selection: NSRange(location: aiRange.location, length: replacement.length), name: "AI edit")
         return true
     }
+    @Published var markdownShown = false
+    var markdownOriginal = ""
+    private var markdownSnapshot = NSAttributedString(string: "")
+    func beginMarkdown(_ source: String) {
+        guard let editor else { return }
+        markdownSnapshot = NSAttributedString(attributedString: editor.attributedString())
+        markdownOriginal = source
+        markdownShown = true
+    }
+    func applyMarkdown(_ source: String, validate: (NSAttributedString) -> Bool) -> Bool {
+        guard let editor, editor.attributedString().isEqual(to: markdownSnapshot),
+              let next = try? NoteMarkdown.render(source), validate(next) else { return false }
+        apply(next, selection: NSRange(location: 0, length: 0), name: "Markdown")
+        editor.typingAttributes = NoteFormatting.attributes
+        return true
+    }
+    func pasteMarkdown(validate: (NSAttributedString) -> Bool) {
+        guard let editor, let source = NSPasteboard.general.string(forType: .string),
+              let rendered = try? NoteMarkdown.render(source) else { NSSound.beep(); return }
+        let next = NSMutableAttributedString(attributedString: editor.attributedString())
+        let range = editor.selectedRange()
+        next.replaceCharacters(in: range, with: rendered)
+        guard next.string.count <= 60000, validate(next) else { NSSound.beep(); return }
+        apply(next, selection: NSRange(location: range.location + rendered.length, length: 0), name: "Paste Markdown")
+        editor.typingAttributes = NoteFormatting.attributes
+    }
     @Published var linkShown = false
     @Published var linkText = ""
     @Published var linkURL = ""
@@ -106,15 +132,18 @@ import WorkmateCore
         guard let editor, index < (editor.string as NSString).length else { return }
         let ns = editor.string as NSString, paragraph = ns.paragraphRange(for: NSRange(location: index, length: 0))
         let line = ns.substring(with: paragraph)
-        guard line.hasPrefix("☐ ") || line.hasPrefix("☑ ") else { return }
+        let indentation = (String(line.prefix { $0 == " " || $0 == "\t" }) as NSString).length
+        let content = (line as NSString).substring(from: indentation)
+        guard content.hasPrefix("☐ ") || content.hasPrefix("☑ ") else { return }
         let next = NSMutableAttributedString(attributedString: editor.attributedString())
-        next.replaceCharacters(in: NSRange(location: paragraph.location, length: 1), with: line.hasPrefix("☐") ? "☑" : "☐")
+        next.replaceCharacters(in: NSRange(location: paragraph.location + indentation, length: 1), with: content.hasPrefix("☐") ? "☑" : "☐")
         apply(next, selection: editor.selectedRange(), name: "Checklist")
     }
 }
 
 struct NoteFormattingToolbar: View {
     @ObservedObject var controller: NoteEditorController
+    var editMarkdown: () -> Void
     var body: some View {
         HStack(spacing: 3) {
             formatButton("Bold · ⌘B", icon: "bold", active: controller.selectionStyle.bold) { controller.toggleFont(.boldFontMask) }
@@ -131,6 +160,19 @@ struct NoteFormattingToolbar: View {
                 .popover(isPresented: $controller.aiShown, arrowEdge: .bottom) {
                     AIEditSheet(original: controller.aiOriginal, apply: controller.applyAI)
                 }
+            Button(action: editMarkdown) {
+                HStack(spacing: 1) {
+                    Text("M").font(.system(size: 14, weight: .heavy, design: .monospaced))
+                    Image(systemName: "arrow.down").font(.system(size: 11, weight: .bold))
+                }
+                .frame(width: 27, height: 19)
+                .overlay { RoundedRectangle(cornerRadius: 3).strokeBorder(lineWidth: 1.4) }
+                .frame(width: 34, height: 36).contentShape(RoundedRectangle(cornerRadius: 6))
+            }
+            .buttonStyle(FullHitButtonStyle())
+            .foregroundStyle(controller.markdownShown ? Palette.accent : Color.secondary)
+            .background(controller.markdownShown ? Palette.accent.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+            .help("Edit Markdown").accessibilityLabel("Edit Markdown")
             Spacer(minLength: 0)
         }.padding(.bottom, 12)
     }
@@ -176,9 +218,31 @@ private struct NoteLinkPopover: View {
         button.setAccessibilityHidden(true)
         return button
     }()
+    private lazy var selectionAIButton: NSButton = {
+        let button = NSButton(image: NSImage(systemSymbolName: "sparkles", accessibilityDescription: "AI tools")!, target: self, action: #selector(improveSelectedText))
+        button.isBordered = false
+        button.wantsLayer = true
+        button.layer?.cornerRadius = 5
+        button.layer?.borderWidth = 1
+        button.layer?.borderColor = NSColor.white.withAlphaComponent(0.22).cgColor
+        button.layer?.backgroundColor = NSColor(Palette.background).cgColor
+        button.contentTintColor = NSColor(Palette.accent)
+        button.refusesFirstResponder = true
+        button.setAccessibilityLabel("AI tools for selection")
+        button.toolTip = "Improve the highlighted text with AI"
+        button.isHidden = true
+        button.setAccessibilityHidden(true)
+        return button
+    }()
+    @objc private func improveSelectedText() {
+        controller?.beginAI()
+        hideSelectionButton()
+    }
     private var scrollObserver: NSObjectProtocol?
     private var selectionClickMonitor: Any?
     private func hideSelectionButton() {
+        selectionAIButton.isHidden = true
+        selectionAIButton.setAccessibilityHidden(true)
         selectionButton.isHidden = true
         selectionButton.setAccessibilityHidden(true)
     }
@@ -187,14 +251,20 @@ private struct NoteLinkPopover: View {
         if let scrollObserver { NotificationCenter.default.removeObserver(scrollObserver); self.scrollObserver = nil }
         if let selectionClickMonitor { NSEvent.removeMonitor(selectionClickMonitor); self.selectionClickMonitor = nil }
         selectionButton.removeFromSuperview()
+        selectionAIButton.removeFromSuperview()
         guard let window else { return }
         window.contentView?.addSubview(selectionButton)
+        window.contentView?.addSubview(selectionAIButton)
         // NSHostingView handles its own hit testing; route the floating native overlay first.
         selectionClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
-            guard let self, event.window === self.window, !self.selectionButton.isHidden,
-                  self.selectionButton.bounds.contains(self.selectionButton.convert(event.locationInWindow, from: nil)) else { return event }
-            self.makeSelectedAction()
-            return nil
+            guard let self, event.window === self.window, !self.selectionButton.isHidden else { return event }
+            if self.selectionAIButton.bounds.contains(self.selectionAIButton.convert(event.locationInWindow, from: nil)) {
+                self.improveSelectedText(); return nil
+            }
+            if self.selectionButton.bounds.contains(self.selectionButton.convert(event.locationInWindow, from: nil)) {
+                self.makeSelectedAction(); return nil
+            }
+            return event
         }
         scrollObserver = NotificationCenter.default.addObserver(forName: NSView.boundsDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor [weak self] in self?.updateSelectionButton() }
@@ -228,9 +298,12 @@ private struct NoteLinkPopover: View {
         guard visibleRect.intersects(anchor), let container = window?.contentView else { hideSelectionButton(); return }
         let target = convert(anchor, to: container)
         let width: CGFloat = 122, height: CGFloat = 28
-        let x = min(max(4, target.maxX - 10), max(4, container.bounds.width - width - 4))
+        let x = min(max(4, target.maxX - 10), max(4, container.bounds.width - width - 38 - 4))
         let y = container.isFlipped ? target.minY - height - 6 : target.maxY + 6
         selectionButton.frame = NSRect(x: x, y: max(4, min(y, container.bounds.height - height - 4)), width: width, height: height)
+        selectionAIButton.frame = NSRect(x: x + width + 6, y: selectionButton.frame.minY, width: 32, height: height)
+        selectionAIButton.isHidden = false
+        selectionAIButton.setAccessibilityHidden(false)
         selectionButton.isHidden = false
         selectionButton.setAccessibilityHidden(false)
     }
@@ -268,14 +341,16 @@ private struct NoteLinkPopover: View {
         let ns = string as NSString, selection = selectedRange()
         guard selection.length == 0 else { super.insertNewline(sender); return }
         let paragraph = ns.paragraphRange(for: selection), line = ns.substring(with: paragraph).trimmingCharacters(in: .newlines)
-        let prefix = NoteFormatting.listPrefix(line)
+        let indentation = String(line.prefix { $0 == " " || $0 == "\t" })
+        let content = String(line.dropFirst(indentation.count))
+        let prefix = NoteFormatting.listPrefix(content)
         guard !prefix.isEmpty else { super.insertNewline(sender); return }
-        if line == prefix {
-            insertText("", replacementRange: NSRange(location: paragraph.location, length: (prefix as NSString).length))
+        if content == prefix {
+            insertText("", replacementRange: NSRange(location: paragraph.location, length: ((indentation + prefix) as NSString).length))
             return
         }
         let next = prefix.first?.isNumber == true ? "\((Int(prefix.dropLast(2)) ?? 0) + 1). " : prefix.hasPrefix("•") ? "• " : "☐ "
-        insertText("\n" + next, replacementRange: selection)
+        insertText("\n" + indentation + next, replacementRange: selection)
     }
     override func mouseDown(with event: NSEvent) {
         if let layoutManager, let textContainer {
@@ -286,7 +361,7 @@ private struct NoteLinkPopover: View {
                 let index = layoutManager.characterIndexForGlyph(at: glyph), ns = string as NSString
                 let paragraph = ns.paragraphRange(for: NSRange(location: index, length: 0))
                 let bounds = layoutManager.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: textContainer)
-                if index == paragraph.location, bounds.insetBy(dx: -3, dy: -2).contains(point), ["☐", "☑"].contains(ns.substring(with: NSRange(location: index, length: 1))) {
+                if ns.substring(with: NSRange(location: paragraph.location, length: index - paragraph.location)).trimmingCharacters(in: .whitespaces).isEmpty, bounds.insetBy(dx: -3, dy: -2).contains(point), ["☐", "☑"].contains(ns.substring(with: NSRange(location: index, length: 1))) {
                     controller?.toggleCheck(at: index); return
                 }
             }

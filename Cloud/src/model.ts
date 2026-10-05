@@ -39,6 +39,7 @@ export const noteSectionSchema = z.object({
   title: z.string().max(200),
   body: z.string().max(60000),
   richText: z.string().max(800000).optional(),
+  markdownSource: z.string().max(60000).optional(),
 });
 export const noteSchema = z.object({
   id: z.string().uuid(),

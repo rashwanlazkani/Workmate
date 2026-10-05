@@ -8,6 +8,9 @@ app="$build_root/Workmate.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$binary_dir/Workmate" "$app/Contents/MacOS/Workmate"
 cp Resources/Info.plist "$app/Contents/Info.plist"
+mkdir -p "$app/Contents/Resources/ThirdParty"
+chmod -R u+w "$app/Contents/Resources/ThirdParty"
+cp Resources/ThirdParty/* "$app/Contents/Resources/ThirdParty/"
 rm -f "$app/Contents/Resources/CloudConfig.json"
 if [[ -f Resources/AppIcon.icns ]]; then cp Resources/AppIcon.icns "$app/Contents/Resources/"; fi
 # Use your own stable identity to preserve macOS privacy approvals across updates.

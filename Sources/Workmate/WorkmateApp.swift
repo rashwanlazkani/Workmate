@@ -37,6 +37,11 @@ typealias ViewState<Value> = SwiftUI.State<Value>
                 Button("Show Workmate") { delegate.showWorkspace() }.keyboardShortcut("0")
             }
             CommandGroup(after: .importExport) {
+                Button("Import Markdown…") { store.importMarkdown() }
+                Button("Export Note as Markdown…") {
+                    if let note = store.workspace.notes.first(where: { $0.id == store.activeColumn }) { store.exportMarkdown(note) }
+                }.disabled(!store.workspace.notes.contains { $0.id == store.activeColumn })
+                Divider()
                 Button("Export Backup…") { store.exportBackup() }
                 Button("Import Backup…") { store.importBackup() }
             }
@@ -146,7 +151,7 @@ struct WorkspaceView: View {
                                 HStack(alignment: .top, spacing: 0) {
                                     ForEach(store.visibleNotes) { note in
                                         NoteColumn(note: note)
-                                            .frame(width: max(300, (geometry.size.width - CGFloat(max(0, store.columns.count - 1)) * 25) / CGFloat(max(1, store.columns.count))))
+                                            .frame(width: max(360, (geometry.size.width - CGFloat(max(0, store.columns.count - 1)) * 25) / CGFloat(max(1, store.columns.count))))
                                             .id(note.id)
                                         if note.id != store.columns.last {
                                             Rectangle().fill(Palette.line).frame(width: 1).padding(.horizontal, 12)
@@ -231,6 +236,7 @@ struct NoteColumn: View {
                     Button("Move left") { store.moveColumn(note.id, by: -1) }.disabled(store.columns.first == note.id)
                     Button("Move right") { store.moveColumn(note.id, by: 1) }.disabled(store.columns.last == note.id)
                     Divider()
+                    Button("Export Markdown…") { store.exportMarkdown(note) }
                     Button("Delete note…", role: .destructive) { confirmDelete = true }
                 } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).menuIndicator(.hidden).frame(width: 18).help("Note options")
                 if store.columns.count > 1 {

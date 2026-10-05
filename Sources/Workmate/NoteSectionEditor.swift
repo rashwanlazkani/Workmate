@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import WorkmateCore
 
@@ -63,8 +64,11 @@ struct NoteSectionEditor: View {
                     MeetingEditor(meeting: meeting, linkingNoteID: noteID, linkingSectionID: section.id).environmentObject(store)
                 }
             HStack(alignment: .top, spacing: 4) {
-                NoteFormattingToolbar(controller: controller)
+                NoteFormattingToolbar(controller: controller) { controller.beginMarkdown(NoteMarkdown.source(for: section)) }
                 Menu {
+                    Button("Edit Markdown…") { controller.beginMarkdown(NoteMarkdown.source(for: section)) }
+                    Button("Paste Markdown") { controller.pasteMarkdown(validate: canApplyMarkdown) }
+                    Divider()
                     Button("Split at cursor") {
                         added(store.addSection(noteID, after: section.id, splitAt: controller.editor?.selectedRange().location ?? (section.body as NSString).length))
                     }
@@ -95,12 +99,30 @@ struct NoteSectionEditor: View {
                 }
             }
         }
+        .sheet(isPresented: $controller.markdownShown) {
+            MarkdownEditorSheet(source: controller.markdownOriginal) { source in
+                guard controller.applyMarkdown(source, validate: canApplyMarkdown) else { return false }
+                store.editSections(noteID) { sections in
+                    if let index = sections.firstIndex(where: { $0.id == section.id }) { sections[index].markdownSource = source }
+                }
+                return true
+            }
+        }
         .confirmationDialog("Delete this section?", isPresented: $confirmDelete) {
             Button("Delete section", role: .destructive) { store.removeSection(noteID, sectionID: section.id) }
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("This removes this section’s heading, text and meeting tags. The column and other sections stay saved.")
         }
+    }
+    private func canApplyMarkdown(_ text: NSAttributedString) -> Bool {
+        guard var note = store.workspace.notes.first(where: { $0.id == noteID }) else { return false }
+        var sections = note.contentSections
+        guard let index = sections.firstIndex(where: { $0.id == section.id }) else { return false }
+        sections[index].body = text.string
+        sections[index].richText = NoteFormatting.encode(text)
+        note.setSections(sections)
+        return note.validSections && note.body.count <= 60000
     }
     private func beginMeeting() {
         let start = Calendar.current.nextDate(after: Date(), matching: DateComponents(minute: 0), matchingPolicy: .nextTime) ?? Date().addingTimeInterval(3600)
