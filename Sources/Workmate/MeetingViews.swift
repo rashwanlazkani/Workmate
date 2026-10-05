@@ -24,6 +24,10 @@ struct MeetingsSheet: View {
                 Button { store.createMeeting() } label: {
                     Label("New meeting", systemImage: "plus").frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                 }.buttonStyle(FullHitButtonStyle()).foregroundStyle(Palette.accent).padding(.vertical, 4)
+                Button { store.importCalendarFile() } label: {
+                    Label("Import ICS file…", systemImage: "calendar.badge.plus")
+                        .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                }.buttonStyle(FullHitButtonStyle()).foregroundStyle(Palette.accent).padding(.vertical, 4)
                 Divider().overlay(Palette.line)
                 if meetings.isEmpty {
                     Text(query.isEmpty ? "Add your first meeting to keep its notes and actions together." : "No matching meetings.")

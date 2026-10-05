@@ -37,6 +37,7 @@ typealias ViewState<Value> = SwiftUI.State<Value>
                 Button("Show Workmate") { delegate.showWorkspace() }.keyboardShortcut("0")
             }
             CommandGroup(after: .importExport) {
+                Button("Import ICS file…") { store.importCalendarFile() }
                 Button("Import Markdown…") { store.importMarkdown() }
                 Button("Export Note as Markdown…") {
                     if let note = store.workspace.notes.first(where: { $0.id == store.activeColumn }) { store.exportMarkdown(note) }

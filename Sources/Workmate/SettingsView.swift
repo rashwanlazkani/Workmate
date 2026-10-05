@@ -72,6 +72,9 @@ struct SettingsView: View {
                                 Text("Use calendars already connected to macOS, including iCloud, Google, and Exchange. Workmate reads the calendars you choose.").font(.system(size: 12)).foregroundStyle(.secondary)
                                 Button("Connect Mac calendars") { Task { await calendars.connect() } }
                             }
+                            Button("Import ICS file…") { store.importCalendarFile() }
+                            Text("For an ICS file, finish importing in Mac Calendar, then select its destination calendar here. Workmate shows timed meetings from the selected calendars.")
+                                .font(.system(size: 12)).foregroundStyle(.secondary)
                             Text("To add iCloud, Google or Exchange, open Calendar → Add Account. Then return here and choose your calendars.")
                                 .font(.system(size: 11)).foregroundStyle(.secondary)
                             Button("Open Calendar") { NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Calendar.app")) }
