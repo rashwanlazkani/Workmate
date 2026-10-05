@@ -297,6 +297,9 @@ struct SearchSheet: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
+                    if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        AskNotesView(question: query).environmentObject(store)
+                    }
                     let matches = store.search(query)
                     ForEach(matches.meetings) { meeting in
                         Button { store.focusMeeting(meeting.id); dismiss() } label: { Label(meeting.title, systemImage: "calendar").frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 5) }.buttonStyle(FullHitButtonStyle())

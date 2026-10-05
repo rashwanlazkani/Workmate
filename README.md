@@ -75,3 +75,15 @@ Highlight note text to show a floating **Make action** button beside the end of 
 Search results include a snippet around matching text, highlighted search terms, and the matching section heading. Meeting-only matches identify the meeting link.
 
 Action rows and button surfaces use their full visible area as the click target, including spacing inside reminder rows and labeled toggles.
+
+### Optional AI (2.9)
+
+Settings → AI lets you choose Apple Intelligence (on device), OpenAI GPT-4.1 mini, or Anthropic Claude Haiku 4.5. Paste your own API key into the secure field, save it to macOS Keychain, then test the connection. API keys are device-only and never included in workspace JSON, iCloud Drive, S3, Pi configuration, or logs. Provider choice is local. Chat subscriptions do not cover API charges.
+
+Select text and click the sparkle in its formatting toolbar to improve writing, fix spelling, shorten, translate, make bullets, or organize headings. Review the original and generated preview before replacing. Only the captured selection changes, edits have native Undo, and replacement refuses if the section changed in the meantime. Truncated cloud responses are never applied.
+
+Search → Ask your notes ranks small passages locally and sends at most six displayed passages only when Ask AI is clicked. Answers cite source IDs, with links back to the source sections. This is bounded local keyword retrieval plus AI synthesis, not a complete semantic/vector index; answers may miss evidence outside the displayed passages. Ordinary search remains instant, offline, and free. AI receives note content as untrusted data and is instructed not to execute embedded instructions.
+
+The shared OpenAI/Anthropic allowance is $5 per UTC calendar month **for Workmate on this Mac**. Before each request, an atomic, process-locked Application Support ledger reserves twice the current list-price upper estimate using UTF-8 byte counts plus message overhead and the 1,200-token output cap. Reservations persist across restart, key changes, provider changes, crashes and timeouts, and are not refunded automatically. This deliberately overstates spend; actual charges are usually much lower. Corrupt/unreadable budget state blocks paid requests. Repeated identical requests use an in-memory cache; there are no background paid scans, tools, hosted search/vector storage, paid embeddings, or automatic retries. Apple Intelligence remains free and outside this allowance.
+
+This local guard is not a provider-account billing guarantee: usage by other apps/Macs, taxes, deleted application data, clock changes and provider price changes are outside its scope. For account-wide control use a dedicated provider account/project and configure the provider's available billing controls. Economy models and rates are pinned in `AIService.swift` (verified October 5, 2026); reassess before changing model IDs. Budget controls must never be bypassed by fallback or retries.

@@ -80,6 +80,8 @@ struct SettingsView: View {
                         }.padding(.top, 16)
                     } label: { settingsLabel("Calendars", subtitle: calendars.selected.isEmpty ? "Not connected" : "\(calendars.selected.count) selected") }
                     Divider()
+                    AISettingsView()
+                    Divider()
                     DisclosureGroup(isExpanded: $intelligenceOpen) {
                         VStack(alignment: .leading, spacing: 14) {
                             Toggle("Scan notes with AI", isOn: Binding(get: { intelligence.enabled }, set: { value in intelligence.setEnabled(value, workspace: store.workspace); store.updateConfiguration { $0.intelligenceEnabled = value } })).toggleStyle(FullRowToggleStyle()).controlSize(.small)
@@ -88,7 +90,7 @@ struct SettingsView: View {
                             if !intelligence.status.isEmpty { Text(intelligence.status).font(.system(size: 11)).foregroundStyle(.secondary) }
                             Button(intelligence.running ? "Scanning notes…" : "Scan now") { intelligence.scan(store.workspace, immediate: true) }.disabled(!intelligence.available || !intelligence.enabled || intelligence.running)
                         }.padding(.top, 16)
-                    } label: { settingsLabel("Intelligence", subtitle: intelligence.running ? "Scanning…" : intelligence.available && intelligence.enabled ? "On device" : "Unavailable") }
+                    } label: { settingsLabel("On-device suggestions", subtitle: intelligence.running ? "Scanning…" : intelligence.available && intelligence.enabled ? "On device" : "Unavailable") }
                     Divider()
                     DisclosureGroup(isExpanded: $cloudOpen) {
                         VStack(alignment: .leading, spacing: 13) {

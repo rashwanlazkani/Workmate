@@ -8,8 +8,31 @@ import WorkmateCore
     @Published var selectionStyle = NoteFormatting.SelectionStyle()
     func refreshSelectionStyle() {
         guard let editor else { return }
+        hasSelection = editor.selectedRange().length > 0
         let next = NoteFormatting.selectionStyle(editor.attributedString(), selection: editor.selectedRange(), typingAttributes: editor.typingAttributes)
         if selectionStyle != next { selectionStyle = next }
+    }
+    @Published var aiShown = false
+    @Published var hasSelection = false
+    var aiOriginal = ""
+    private var aiRange = NSRange(location: 0, length: 0)
+    private var aiSnapshot = NSAttributedString(string: "")
+    func beginAI() {
+        guard let editor else { return }
+        aiRange = editor.selectedRange()
+        guard aiRange.length > 0, NSMaxRange(aiRange) <= editor.attributedString().length else { return }
+        aiSnapshot = NSAttributedString(attributedString: editor.attributedString())
+        aiOriginal = (editor.string as NSString).substring(with: aiRange)
+        aiShown = true
+    }
+    func applyAI(_ text: String) -> Bool {
+        guard let editor, editor.attributedString().isEqual(to: aiSnapshot) else { return false }
+        let next = NSMutableAttributedString(attributedString: aiSnapshot)
+        let replacement = AIFormattedText.render(text)
+        next.replaceCharacters(in: aiRange, with: replacement)
+        guard next.string.count <= 60000 else { return false }
+        apply(next, selection: NSRange(location: aiRange.location, length: replacement.length), name: "AI edit")
+        return true
     }
     @Published var linkShown = false
     @Published var linkText = ""
@@ -103,6 +126,11 @@ struct NoteFormattingToolbar: View {
             Rectangle().fill(Palette.line).frame(width: 1, height: 20).padding(.horizontal, 2)
             formatButton("Add link · ⌘K", icon: "link", active: controller.selectionStyle.linked) { controller.beginLink() }
                 .popover(isPresented: $controller.linkShown, arrowEdge: .bottom) { NoteLinkPopover(controller: controller) }
+            formatButton("AI · Improve selected text", icon: "sparkles", active: controller.aiShown) { controller.beginAI() }
+                .disabled(!controller.hasSelection)
+                .popover(isPresented: $controller.aiShown, arrowEdge: .bottom) {
+                    AIEditSheet(original: controller.aiOriginal, apply: controller.applyAI)
+                }
             Spacer(minLength: 0)
         }.padding(.bottom, 12)
     }

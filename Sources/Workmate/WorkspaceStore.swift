@@ -8,6 +8,7 @@ import WorkmateCore
     @Published private(set) var workspace = Workspace()
     @Published var columns: [String] = []
     @Published var activeColumn = ""
+    @Published var aiSourceSectionID: String?
     @Published var status = "Opening Workmate…"
     @Published var backupStatus = "Not connected"
     @Published var settingsSection = ""

@@ -267,6 +267,10 @@ struct NoteColumn: View {
                                 .padding(.top, 20).disabled(note.contentSections.count >= 50)
                         }.padding(.bottom, 8)
                     }
+                    .onAppear { if let id = store.aiSourceSectionID { proxy.scrollTo(id, anchor: .top) } }
+                    .onChange(of: store.aiSourceSectionID) { _, id in
+                        if let id { withAnimation { proxy.scrollTo(id, anchor: .top) } }
+                    }
                     .onChange(of: newSectionID) { _, id in
                         if let id { withAnimation { proxy.scrollTo(id, anchor: .top) } }
                     }
