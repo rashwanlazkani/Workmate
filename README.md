@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-5482FF)](LICENSE)
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-1F1F24)
 
-[Get started](#build-locally) · [Screenshots](#screenshots) · [Optional AWS setup](Cloud/README.md) · [Contribute](CONTRIBUTING.md)
+[Get started](#build-locally) · [Main features](#main-features) · [Screenshots](#screenshots) · [Optional AWS setup](Cloud/README.md) · [Contribute](CONTRIBUTING.md)
 
 Work often gets split between meeting notes, task lists, and reminders. Decisions lose their context, follow-ups get buried, and finding what you agreed last week means searching across tools.
 
@@ -16,10 +16,20 @@ Workmate is a native **SwiftUI + AppKit** macOS app. The client is entirely Swif
 
 ![Workmate’s dark native macOS workspace showing two note columns, sections, a linked design meeting, and prioritized tasks with tags](docs/images/workspace.png)
 
-- **Write and organize:** rich text, checklists, named columns, and sections with their own meeting tags.
-- **Keep the next step visible:** prioritized tasks, reminders, completion, and a searchable archive.
-- **Find the context:** search notes, meetings, and tags with highlighted matching snippets.
-- **Choose your extras:** optional AI with your own key and monthly allowance; optional AWS in your own account.
+## Main features
+
+- **Notes with structure:** write in side-by-side columns with named sections, bold and italic text, bullets, numbered lists, checklists, and links.
+- **Reminders before meetings:** choose how far ahead to receive a Mac notification and open the meeting’s related notes from the reminder. macOS notification permission is required.
+- **Flexible recurring meetings:** schedule one-time meetings or repeat on multiple weekdays, with different start and end times for each day.
+- **Meeting context in one place:** tag individual note sections with meetings, then open a meeting to see its linked notes and actions together.
+- **Summaries and suggested next steps:** optional on-device Apple Intelligence creates short note summaries, suggests action points, and identifies related meetings. Review suggestions before using them; this requires a supported Mac and macOS 26+.
+- **Turn notes into tasks:** highlight text to create an action, assign a priority, add lowercase tags, and keep completed tasks in a searchable archive.
+- **Task reminders and snooze:** pick a date and time or a quick preset. Mark a task complete or snooze it for one hour directly from its notification.
+- **Search with context:** find notes, meetings, tasks, and tags with highlighted matching snippets. Optional “Ask your notes” answers questions using relevant passages and links back to the source sections.
+- **AI writing you control:** improve, shorten, translate, or format selected text with Apple Intelligence or your own OpenAI or Anthropic key. Preview edits before applying them and set a monthly allowance for paid AI on this Mac.
+- **Your existing calendars:** read selected calendars already connected to macOS, including iCloud, Google, and Exchange, without changing their events.
+- **Optional Telegram and daily briefs:** receive opted-in task reminders, meeting reminders, and a morning brief of open actions by priority through your own AWS backend—even while Workmate is closed. Changes must sync before closing the app.
+- **Your files, your storage:** keep the main workspace in Documents or iCloud Drive. Optionally add encrypted, versioned S3 backups in your own AWS account. Local notes, search, and Mac reminders work without AWS or paid AI.
 
 ## Screenshots
 
