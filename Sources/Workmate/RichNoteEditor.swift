@@ -155,29 +155,25 @@ struct NoteFormattingToolbar: View {
             Rectangle().fill(Palette.line).frame(width: 1, height: 20).padding(.horizontal, 2)
             formatButton("Add link · ⌘K", icon: "link", active: controller.selectionStyle.linked) { controller.beginLink() }
                 .popover(isPresented: $controller.linkShown, arrowEdge: .bottom) { NoteLinkPopover(controller: controller) }
+            formatControl("Edit Markdown", active: controller.markdownShown, action: editMarkdown) {
+                Text("M↓")
+            }
             formatButton("AI · Improve selected text", icon: "sparkles", active: controller.aiShown) { controller.beginAI() }
                 .disabled(!controller.hasSelection)
                 .popover(isPresented: $controller.aiShown, arrowEdge: .bottom) {
                     AIEditSheet(original: controller.aiOriginal, apply: controller.applyAI)
                 }
-            Button(action: editMarkdown) {
-                HStack(spacing: 1) {
-                    Text("M").font(.system(size: 14, weight: .heavy, design: .monospaced))
-                    Image(systemName: "arrow.down").font(.system(size: 11, weight: .bold))
-                }
-                .frame(width: 27, height: 19)
-                .overlay { RoundedRectangle(cornerRadius: 3).strokeBorder(lineWidth: 1.4) }
-                .frame(width: 34, height: 36).contentShape(RoundedRectangle(cornerRadius: 6))
-            }
-            .buttonStyle(FullHitButtonStyle())
-            .foregroundStyle(controller.markdownShown ? Palette.accent : Color.secondary)
-            .background(controller.markdownShown ? Palette.accent.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
-            .help("Edit Markdown").accessibilityLabel("Edit Markdown")
             Spacer(minLength: 0)
         }.padding(.bottom, 12)
     }
     private func formatButton(_ label: String, icon: String, active: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) { Image(systemName: icon).font(.system(size: 18, weight: .medium)).frame(width: 34, height: 36).contentShape(RoundedRectangle(cornerRadius: 6)) }
+        formatControl(label, active: active, action: action) { Image(systemName: icon) }
+    }
+    private func formatControl<Icon: View>(_ label: String, active: Bool, action: @escaping () -> Void, @ViewBuilder icon: () -> Icon) -> some View {
+        Button(action: action) {
+            icon().font(.system(size: 18, weight: .medium)).symbolRenderingMode(.monochrome)
+                .frame(width: 34, height: 36).contentShape(RoundedRectangle(cornerRadius: 6))
+        }
             .buttonStyle(FullHitButtonStyle())
             .foregroundStyle(active ? Palette.accent : Color.secondary)
             .background(active ? Palette.accent.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 6))

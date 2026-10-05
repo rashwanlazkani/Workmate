@@ -79,8 +79,9 @@ struct NoteSectionEditor: View {
                     }
                     Divider()
                     Button("Delete section…", role: .destructive) { confirmDelete = true }
-                } label: { Image(systemName: "rectangle.split.1x2").font(.system(size: 17)).frame(width: 32, height: 36).contentShape(Rectangle()) }
+                } label: { Image(systemName: "rectangle.split.1x2").renderingMode(.original).foregroundColor(.secondary).font(.system(size: 18, weight: .medium)).symbolRenderingMode(.monochrome).frame(width: 34, height: 36).contentShape(RoundedRectangle(cornerRadius: 6)) }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                .tint(Color.secondary).accentColor(.secondary)
                 .help("Split this section or add another").accessibilityLabel("Section options")
             }
             NativeNoteEditor(text: section.body, richText: section.richText, selectedText: $selected,
