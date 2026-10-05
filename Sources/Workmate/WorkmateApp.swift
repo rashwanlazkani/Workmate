@@ -50,6 +50,20 @@ typealias ViewState<Value> = SwiftUI.State<Value>
 }
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     let workspaceWindow = WorkspaceWindowController()
+    override init() {
+        super.init()
+        // Set the running icon before SwiftUI creates the workspace. Dock can
+        // retain an older icon even when the bundle's Launch Services icon is current.
+        applyBundleIcon()
+    }
+    private func applyBundleIcon() {
+        guard let url = Bundle.main.url(forResource: "WorkmateBlue", withExtension: "icns"),
+              let icon = NSImage(contentsOf: url) else { return }
+        NSApplication.shared.applicationIconImage = icon
+    }
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        applyBundleIcon()
+    }
     func showWorkspace() { workspaceWindow.show() }
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)

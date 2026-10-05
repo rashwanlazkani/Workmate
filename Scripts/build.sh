@@ -12,7 +12,7 @@ mkdir -p "$app/Contents/Resources/ThirdParty"
 chmod -R u+w "$app/Contents/Resources/ThirdParty"
 cp Resources/ThirdParty/* "$app/Contents/Resources/ThirdParty/"
 rm -f "$app/Contents/Resources/CloudConfig.json"
-# The bundle icon is used before launch; do not replace it after startup.
+# Use the same blue artwork for the bundle and the early startup icon.
 cp Resources/WorkmateBlue.icns "$app/Contents/Resources/"
 # Already-running versions and cached registrations may still request the old name.
 # Keep that compatibility resource blue too; new launches use WorkmateBlue.icns.
