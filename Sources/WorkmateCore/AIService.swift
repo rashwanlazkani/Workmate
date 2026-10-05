@@ -17,8 +17,8 @@ public struct AIError: LocalizedError {
 /// Conservative preflight reservations, retained even on network failures; no unbilled retries.
 /// One locked ledger for both providers and all Workmate processes on this Mac.
 public final class AIBudget {
-    public static let limit = 5.0
-    public struct Ledger: Codable { public var months: [String: Double] = [:]; public init() {} }
+    public static let defaultLimit = 5.0
+    public struct Ledger: Codable { public var months: [String: Double] = [:]; public var maximum: Double?; public init() {} }
     let directory: URL
     public init(directory: URL) { self.directory = directory }
     public static func month(_ date: Date) -> String {
@@ -32,11 +32,25 @@ public final class AIBudget {
         return 2 * (Double(inputBound) * provider.rates.input + Double(outputTokens) * provider.rates.output) / 1_000_000
     }
     public func reserved(date: Date = Date()) throws -> Double { try locked { ledger in ledger.months[Self.month(date), default: 0] } }
+    public func monthlyLimit() throws -> Double { try locked { $0.maximum ?? Self.defaultLimit } }
+    public static func parseLimit(_ input: String) throws -> Double {
+        let text = input.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+        guard text.range(of: #"^\d+(?:\.\d{1,2})?$"#, options: .regularExpression) != nil,
+              let value = Double(text), value.isFinite, value <= 1_000_000 else {
+            throw AIError("Enter a USD amount from 0 to 1,000,000, with up to two decimal places.")
+        }
+        return value
+    }
+    public func setMonthlyLimit(_ value: Double) throws {
+        guard value.isFinite, value >= 0, value <= 1_000_000,
+              abs(value * 100 - (value * 100).rounded()) < 0.000001 else { throw AIError("Enter a valid monthly maximum in USD, with up to two decimal places.") }
+        try locked { $0.maximum = value }
+    }
     public func reserve(_ cost: Double, date: Date = Date()) throws {
         guard cost.isFinite, cost > 0 else { throw AIError("Invalid AI cost estimate.") }
         try locked { ledger in
             let month = Self.month(date), current = ledger.months[month, default: 0]
-            guard current + cost <= Self.limit else { throw AIError("Your $5 monthly AI allowance is used up. Choose Apple Intelligence for free on-device help, or wait until next month (UTC).") }
+            guard current + cost <= (ledger.maximum ?? Self.defaultLimit) else { throw AIError("This request would exceed your monthly AI maximum. Choose Apple Intelligence, wait until next month (UTC), or change the maximum in Settings → AI.") }
             ledger.months[month] = current + cost
         }
     }
@@ -53,7 +67,7 @@ public final class AIBudget {
         if FileManager.default.fileExists(atPath: url.path) {
             // Fail closed for damaged or unreadable state, rather than resetting spending.
             ledger = try JSONDecoder().decode(Ledger.self, from: Data(contentsOf: url))
-            guard ledger.months.values.allSatisfy({ $0.isFinite && $0 >= 0 }) else { throw AIError("The AI budget file is invalid. No request was sent.") }
+            guard ledger.months.values.allSatisfy({ $0.isFinite && $0 >= 0 }), (ledger.maximum ?? Self.defaultLimit).isFinite, (ledger.maximum ?? Self.defaultLimit) >= 0, (ledger.maximum ?? Self.defaultLimit) <= 1_000_000 else { throw AIError("The AI budget file is invalid. No request was sent.") }
         }
         let result = try operation(&ledger)
         try JSONEncoder().encode(ledger).write(to: url, options: .atomic)

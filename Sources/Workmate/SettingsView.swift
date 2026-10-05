@@ -94,17 +94,13 @@ struct SettingsView: View {
                     Divider()
                     DisclosureGroup(isExpanded: $cloudOpen) {
                         VStack(alignment: .leading, spacing: 13) {
-                            Text("A second copy in private S3 storage in Stockholm. Your iCloud files remain the main workspace. Schedule changes are pushed to your Raspberry Pi, which delivers Telegram reminders while Workmate is closed.")
+                            Text("A second copy in private S3 storage in Stockholm. Your iCloud files remain the main workspace. AWS schedules Telegram reminders and delivers them while Workmate is closed.")
                                 .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                             if store.driveConfiguration.serviceToken != nil {
                                 Toggle("Keep an AWS backup", isOn: Binding(get: { store.driveConfiguration.backupEnabled }, set: { enabled in
                                     store.updateConfiguration { $0.backupEnabled = enabled }
                                     if enabled { Task { await store.backUpNow() } }
                                 })).toggleStyle(FullRowToggleStyle()).controlSize(.small)
-                                if let seen = store.telegram.agentLastSeen.flatMap({ WorkmateCore.Dates.parse($0) }) {
-                                    Label("Pi schedule synced " + seen.formatted(date: .abbreviated, time: .shortened), systemImage: "arrow.triangle.2.circlepath")
-                                        .font(.system(size: 11)).foregroundStyle(.secondary)
-                                }
                                 if store.isCloud {
                                     HStack {
                                         Text(store.backupStatus).font(.system(size: 11)).foregroundStyle(.secondary)
@@ -144,7 +140,7 @@ struct SettingsView: View {
                                 if store.telegram.connected { Button("Disconnect…") { disconnecting = true }.font(.system(size: 11)) }
                                 if let error = store.telegram.lastError { Text(error).font(.system(size: 11)).foregroundStyle(.orange) }
                             } else {
-                                Text("Enable AWS backup to connect Telegram. It shares your reminders with the Raspberry Pi; no separate sign-in is needed.").font(.system(size: 12)).foregroundStyle(.secondary)
+                                Text("Enable AWS backup to connect Telegram. It schedules your Telegram reminders in AWS; no separate sign-in is needed.").font(.system(size: 12)).foregroundStyle(.secondary)
                                 Button("Show AWS backup") { withAnimation { cloudOpen = true; proxy.scrollTo("backup", anchor: .top) } }
                             }
                         }.padding(.top, 16)

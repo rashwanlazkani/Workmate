@@ -1,9 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { createHash } from "node:crypto";
 import { emptyWorkspace, newTask, workspaceSchema } from "../src/model";
 import { notificationPlan } from "../server/notifications";
 import { Service, userHash, type Bot } from "../server/service";
-import { agentIdentity, agentRoute } from "../server/agent";
 import type { Repository } from "../server/repository";
 
 function memory() {
@@ -76,7 +74,7 @@ it("rejects a different chat and an unknown task without pretending to complete 
   expect(calls[0].data.text).toContain("no longer available");
   expect((await service.workspace(user)).tasks[0].status).toBe("inbox");
 });
-it("shares delivery receipts between the Pi and AWS, with clear text and both actions", async () => {
+it("deduplicates AWS deliveries, with clear text and both actions", async () => {
   const { service, w, calls } = setup();
   const event = { user, kind: "reminder" as const, taskId: w.tasks[0].id, remindAt: w.tasks[0].remindAt };
   expect(await service.deliver(event)).toBe("delivered");
@@ -84,19 +82,6 @@ it("shares delivery receipts between the Pi and AWS, with clear text and both ac
   expect(calls).toHaveLength(1); expect(calls[0].data.text).toContain("High priority");
   expect(calls[0].data.text).not.toContain("nudge");
   expect(calls[0].data.reply_markup.inline_keyboard[0].map((b: any) => b.text)).toEqual(["Mark complete", "Snooze 1 hour"]);
-});
-it("scopes the agent to scheduling only, and refuses early or canceled jobs", async () => {
-  const { service, repo, values, w } = setup();
-  const id = "11234567-89ab-4cde-abcd-0123456789ab", token = `wma_${id}.${"a".repeat(64)}`;
-  values.set("AGENT#" + id, { enabled: true, user, tokenHash: createHash("sha256").update(token).digest("hex") });
-  expect(await agentIdentity(repo, `Bearer ${token}`)).toBe(user);
-  expect(await agentIdentity(repo, `Bearer ${token.slice(0, -1)}b`)).toBeUndefined();
-  await expect(agentRoute(service, user, "PUT", "/workspace", w)).rejects.toThrow("Route not found");
-  await expect(agentRoute(service, user, "POST", "/telegram/connect", {})).rejects.toThrow("Route not found");
-  const now = Date.parse("2026-10-07T10:59:00Z"), job = notificationPlan(w, now)[0];
-  expect(await agentRoute(service, user, "POST", "/deliver", { id: job.id }, now)).toEqual({ status: "pending" });
-  w.tasks[0].telegramReminder = false;
-  expect(await agentRoute(service, user, "POST", "/deliver", { id: job.id }, now)).toEqual({ status: "canceled" });
 });
 it("normalizes task tags and preserves legacy tasks without tags", () => {
   const w = workspaceSchema.parse({ ...emptyWorkspace(), tasks: [{ ...newTask("Agenda"), tags: [" #PO-Sync ", "po-sync", "RELEASE   Planning"] }, newTask("Legacy")] });

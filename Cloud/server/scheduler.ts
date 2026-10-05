@@ -11,7 +11,8 @@ import { createHash } from "node:crypto";
 import { dateKey, notifiesTelegram, type Workspace } from "../src/model";
 import { DynamoRepository, SecretVault } from "./repository";
 import { Service, userHash } from "./service";
-import { publishScheduleChange } from "./push";
+import { DateTime } from "luxon";
+import { notificationPlan } from "./notifications";
 const client = new SchedulerClient({});
 export const scheduleName = (user: string, id: string) =>
   "wm-" +
@@ -53,6 +54,41 @@ export function reminderSchedule(
       DeadLetterConfig: { Arn: process.env.DEAD_LETTER_ARN! },
     },
   };
+}
+export function meetingSchedules(user: string, workspace: Workspace, now = Date.now(), includeExpired = false): Omit<CreateScheduleCommandInput, "GroupName">[] {
+  const schedules: Omit<CreateScheduleCommandInput, "GroupName">[] = [];
+  for (const meeting of workspace.meetings ?? []) {
+    if (meeting.canceled || !meeting.reminderEnabled) continue;
+    const start = DateTime.fromISO(meeting.startAt, { zone: meeting.timezone });
+    const base = (suffix: string, startAt?: string) => ({
+      Name: scheduleName(user, "meeting:" + meeting.id + ":" + suffix),
+      FlexibleTimeWindow: { Mode: "OFF" as const },
+      Target: {
+        Arn: process.env.WORKER_ARN!, RoleArn: process.env.SCHEDULER_ROLE_ARN!,
+        Input: JSON.stringify({ user, kind: "meeting", meetingId: meeting.id, ...(startAt ? { startAt } : {}) }),
+        RetryPolicy: { MaximumEventAgeInSeconds: 3600, MaximumRetryAttempts: 3 },
+        DeadLetterConfig: { Arn: process.env.DEAD_LETTER_ARN! },
+      },
+    });
+    if (meeting.recurrence !== "weekly") {
+      if (!includeExpired && Math.min(Date.parse(meeting.endAt), start.plus({ minutes: 5 }).toMillis()) <= now) continue;
+      const fire = Math.max(start.minus({ minutes: meeting.reminderMinutes }).toMillis(), now + 65000);
+      schedules.push({ ...base("once", start.toUTC().toISO({ suppressMilliseconds: true })!),
+        ScheduleExpression: `at(${new Date(fire).toISOString().slice(0, 19)})`, ScheduleExpressionTimezone: "UTC", ActionAfterCompletion: "DELETE" });
+      continue;
+    }
+    const rules = meeting.weeklySchedule ?? (meeting.weekdays ?? [start.weekday % 7 + 1]).map(weekday => ({ weekday, startTime: start.toFormat("HH:mm"), endTime: "" }));
+    for (const rule of rules) {
+      const [hour, minute] = rule.startTime.split(":").map(Number);
+      const fire = DateTime.utc(2026, 1, 4).plus({ days: rule.weekday - 1 }).set({ hour, minute }).minus({ minutes: meeting.reminderMinutes });
+      schedules.push({ ...base(String(rule.weekday)),
+        ScheduleExpression: `cron(${fire.minute} ${fire.hour} ? * ${fire.weekday % 7 + 1} *)`,
+        ScheduleExpressionTimezone: meeting.timezone,
+        StartDate: new Date(Math.max(now, start.minus({ minutes: meeting.reminderMinutes }).toMillis())),
+      });
+    }
+  }
+  return schedules;
 }
 async function remove(name: string) {
   try {
@@ -135,14 +171,14 @@ export async function planner(event: DynamoDBStreamEvent) {
           });
         } else await remove(name);
       }
-      // Stream delivery is retried if publish fails. Duplicate events are harmless:
-      // the Pi coalesces them and reads the latest authoritative plan once.
-      const before = old as (Workspace & { notificationFingerprint?: string }) | undefined;
-      const after = next as Workspace & { notificationFingerprint?: string };
-      if (!before || before.notificationFingerprint !== after.notificationFingerprint ||
-          (!after.notificationFingerprint && JSON.stringify([before.tasks, before.settings]) !== JSON.stringify([after.tasks, after.settings]))) {
-        await publishScheduleChange(user, next.revision);
+      if (JSON.stringify(old?.meetings) !== JSON.stringify(next.meetings)) {
+      const previousMeetings = meetingSchedules(user, old ?? { ...next, meetings: [] }, Date.now(), true);
+      const schedules = meetingSchedules(user, next);
+      const names = new Set(schedules.map(s => s.Name));
+      for (const schedule of schedules) await upsert(schedule);
+      for (const schedule of previousMeetings) if (!names.has(schedule.Name)) await remove(schedule.Name!);
       }
+
     } catch (e) {
       console.error("Schedule reconciliation failed", {
         type: (e as Error).name,
@@ -157,13 +193,21 @@ export async function planner(event: DynamoDBStreamEvent) {
 const service = new Service(new DynamoRepository(), new SecretVault(), "cloud");
 export async function worker(event: {
   user: string;
-  kind: "reminder" | "digest";
+  kind: "reminder" | "digest" | "meeting";
+  meetingId?: string;
+  startAt?: string;
   taskId?: string;
   remindAt?: string;
   date?: string;
 }) {
   const w = await service.repo.get<Workspace>("WORKSPACE#" + event.user);
   if (!w) return;
+  if (event.kind === "meeting" && !event.startAt) {
+    // Recurring cron invocations resolve the current occurrence from authoritative data.
+    const occurrence = notificationPlan(w).find(job => job.kind === "meeting" && job.meetingId === event.meetingId && Date.parse(job.fireAt) <= Date.now());
+    if (!occurrence) return;
+    event.startAt = occurrence.startAt;
+  }
   await service.deliver({
     ...event,
     date: dateKey(new Date(), w.settings.timezone),

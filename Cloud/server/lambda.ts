@@ -2,7 +2,6 @@ import type {
   APIGatewayProxyEventV2WithJWTAuthorizer,
   APIGatewayProxyResultV2,
 } from "aws-lambda";
-import { agentIdentity, agentRoute } from "./agent";
 import { deviceIdentity, deviceRoute } from "./device";
 import { timingSafeEqual } from "node:crypto";
 import { Conflict, DynamoRepository, SecretVault } from "./repository";
@@ -25,9 +24,8 @@ export async function handler(
   event: APIGatewayProxyEventV2WithJWTAuthorizer,
 ): Promise<APIGatewayProxyResultV2> {
   try {
-    const isAgent = event.rawPath.startsWith("/agent/");
     const isDevice = event.rawPath.startsWith("/device/");
-    const path = event.rawPath.replace(isAgent ? /^\/agent/ : isDevice ? /^\/device/ : /^\/api/, "");
+    const path = event.rawPath.replace(isDevice ? /^\/device/ : /^\/api/, "");
     if (Buffer.byteLength(event.body || "") > 4200000)
       return response(413, { error: "Request too large" });
     const data = event.body
@@ -37,7 +35,7 @@ export async function handler(
             : event.body,
         )
       : {};
-    if (!isAgent && !isDevice && path.startsWith("/telegram/webhook/")) {
+    if (!isDevice && path.startsWith("/telegram/webhook/")) {
       const actual = Buffer.from(
           event.headers["x-telegram-bot-api-secret-token"] || "",
         ),
@@ -53,11 +51,6 @@ export async function handler(
         return response(400, { error: "Invalid route" });
       await service.incoming(hash, data as TelegramUpdate);
       return response(200, { ok: true });
-    }
-    if (isAgent) {
-      const owner = await agentIdentity(service.repo, event.headers.authorization);
-      if (!owner) return response(401, { error: "Invalid reminder agent key." });
-      return response(200, await agentRoute(service, owner, event.requestContext.http.method, path, data));
     }
     if (isDevice) {
       const owner = await deviceIdentity(service.repo, event.headers.authorization);

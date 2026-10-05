@@ -5,6 +5,8 @@ import WorkmateCore
 struct AISettingsView: View {
     @ObservedObject private var ai = AIController.shared
     @ViewState<String> private var key = ""
+    @ViewState<String> private var maximumDraft = "5.00"
+    @ViewState<String> private var maximumError = ""
     @ViewState<String> private var message = ""
     @ViewState<Bool> private var expanded = false
     var body: some View {
@@ -31,10 +33,20 @@ struct AISettingsView: View {
                     Text("Keys stay in Keychain and are excluded from iCloud files and S3 backups. API billing is separate from chat subscriptions.").font(.caption).foregroundStyle(.secondary)
                 }
                 VStack(alignment: .leading, spacing: 7) {
-                    HStack { Text("Monthly allowance").fontWeight(.medium); Spacer(); Text("$5 maximum") }
-                    ProgressView(value: min(ai.reserved, 5), total: 5).tint(Palette.accent)
+                    HStack { Text("Monthly allowance").fontWeight(.medium); Spacer(); Text(String(format: "$%.2f maximum", ai.monthlyMaximum)) }
+                    HStack(spacing: 10) {
+                        Text("Maximum (USD)")
+                        TextField("5.00", text: $maximumDraft).modernTextField().frame(width: 120)
+                            .accessibilityLabel("Monthly AI maximum in USD").onSubmit(saveMaximum)
+                        Button("Save maximum", action: saveMaximum).modernButtonStyle().disabled(ai.busy)
+                    }
+                    if !maximumError.isEmpty { Text(maximumError).font(.caption).foregroundStyle(.orange) }
+                    ProgressView(value: ai.monthlyMaximum == 0 ? 0 : min(ai.reserved, ai.monthlyMaximum), total: max(ai.monthlyMaximum, 0.01)).tint(Palette.accent)
+                    if ai.monthlyMaximum == 0 { Text("Paid AI is disabled. Apple Intelligence stays available.").font(.caption) }
+                    else if ai.reserved >= ai.monthlyMaximum { Text("This month’s reservations have reached the maximum. New paid requests are blocked.").font(.caption) }
+                    Text("Changes apply immediately to new requests. Existing reservations are kept. Set 0 to disable paid AI.").font(.caption).foregroundStyle(.secondary)
                     Text(String(format: "$%.3f reserved this month · shared across both providers", ai.reserved)).font(.caption)
-                    Text("Workmate reserves a conservative maximum before each request and stops at $5. Actual charges are usually lower. Resets each calendar month (UTC). Failed requests retain their reservation. No paid background scans or automatic retries.").font(.caption).foregroundStyle(.secondary)
+                    Text("Workmate reserves a conservative maximum before each request and stops at your saved maximum. Actual charges are usually lower. Resets each calendar month (UTC). Failed requests retain their reservation. No paid background scans or automatic retries.").font(.caption).foregroundStyle(.secondary)
                     Text("Applies to Workmate on this Mac. Other apps, other Macs, provider price changes and taxes are outside this allowance. Use a dedicated API key and check your provider’s billing limits for account-wide control.").font(.caption).foregroundStyle(.secondary)
                 }.padding(14).background(Palette.panel, in: RoundedRectangle(cornerRadius: 10))
                 if let error = ai.budgetError { Text(error).foregroundStyle(.orange) }
@@ -44,7 +56,14 @@ struct AISettingsView: View {
             }.font(.system(size: 12)).padding(.top, 14)
         } label: {
             HStack { Text("AI").font(.system(size: 15, weight: .medium)); Spacer(); Text(ai.provider.title).font(.system(size: 11)).foregroundStyle(.secondary) }
-        }.onAppear { ai.refresh() }
+        }.onAppear { ai.refresh(); maximumDraft = String(format: "%.2f", ai.monthlyMaximum) }
+    }
+    private func saveMaximum() {
+        do {
+            try ai.setMonthlyMaximum(maximumDraft)
+            maximumDraft = String(format: "%.2f", ai.monthlyMaximum)
+            maximumError = ""; message = "Monthly maximum saved."
+        } catch { maximumError = error.localizedDescription }
     }
 }
 

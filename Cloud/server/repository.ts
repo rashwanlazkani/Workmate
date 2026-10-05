@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { Workspace } from "../src/model";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -155,12 +155,7 @@ export class DynamoRepository implements Repository {
           telegramReminder: t.telegramReminder ?? Boolean(t.remindAt),
         })),
         settings: w.settings,
-        notificationFingerprint: createHash("sha256").update(JSON.stringify({
-          tasks: w.tasks.map(t => [t.id, t.status, t.remindAt, t.telegramReminder]),
-          settings: [w.settings.digestEnabled, w.settings.digestTime, w.settings.timezone],
-          meetings: (w.meetings ?? []).map(m => [m.id, m.startAt, m.endAt, m.timezone, m.canceled,
-            m.reminderEnabled, m.reminderMinutes, m.recurrence, m.weekdays, m.weeklySchedule]),
-        })).digest("hex"),
+        meetings: w.meetings ?? [],
       };
     }
     try {

@@ -28,7 +28,6 @@ public struct TelegramStatus: Decodable, Sendable {
     public var botName: String?
     public var link: String?
     public var lastError: String?
-    public var agentLastSeen: String?
     public static var empty: Self { .init(configured: false, connected: false) }
 }
 

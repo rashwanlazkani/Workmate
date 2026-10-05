@@ -104,7 +104,6 @@ export class Service {
           ? `https://t.me/${bot.botName}?start=${bot.pairCode}`
           : undefined,
       lastError: delivery?.error,
-      agentLastSeen: (await this.repo.get<{ lastSeen: string }>("AGENT_STATUS#" + user))?.lastSeen,
     };
   }
   async connect(user: string, input: unknown, baseUrl: string) {

@@ -17,7 +17,6 @@ import * as scheduler from "aws-cdk-lib/aws-scheduler";
 import * as secrets from "aws-cdk-lib/aws-secretsmanager";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
-import * as custom from "aws-cdk-lib/custom-resources";
 import path from "node:path";
 export class WorkmateStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: cdk.StackProps) {
@@ -193,22 +192,13 @@ export class WorkmateStack extends cdk.Stack {
     });
     worker.grantInvoke(schedulerRole);
     deadLetter.grantSendMessages(schedulerRole);
-    const iotEndpoint = new custom.AwsCustomResource(this, "ReminderPushEndpoint", {
-      installLatestAwsSdk: false,
-      onUpdate: { service: "Iot", action: "describeEndpoint", parameters: { endpointType: "iot:Data-ATS" },
-        physicalResourceId: custom.PhysicalResourceId.of("workmate-reminder-push") },
-      policy: custom.AwsCustomResourcePolicy.fromSdkCalls({ resources: custom.AwsCustomResourcePolicy.ANY_RESOURCE }),
-    });
     const planner = make("Planner", "server/scheduler.ts", "planner", {
       ...env,
       WORKER_ARN: worker.functionArn,
       SCHEDULER_ROLE_ARN: schedulerRole.roleArn,
       SCHEDULE_GROUP: group.ref,
       DEAD_LETTER_ARN: deadLetter.queueArn,
-      IOT_DATA_ENDPOINT: iotEndpoint.getResponseField("endpointAddress"),
     });
-    planner.addToRolePolicy(new iam.PolicyStatement({ actions: ["iot:Publish"],
-      resources: [`arn:${this.partition}:iot:${this.region}:${this.account}:topic/workmate/*/changes`] }));
     planner.addToRolePolicy(
       new iam.PolicyStatement({
         actions: [
@@ -278,7 +268,6 @@ export class WorkmateStack extends cdk.Stack {
       integration,
       authorizer: auth,
     });
-    api.addRoutes({ path: "/agent/{proxy+}", methods: [apigw.HttpMethod.GET, apigw.HttpMethod.POST], integration });
     api.addRoutes({
       path: "/device/{proxy+}",
       methods: [apigw.HttpMethod.GET, apigw.HttpMethod.PUT, apigw.HttpMethod.POST],
@@ -307,7 +296,6 @@ export class WorkmateStack extends cdk.Stack {
       Region: this.region,
       TableName: table.tableName,
       BackupBucketName: backups.bucketName,
-      PushEndpoint: iotEndpoint.getResponseField("endpointAddress"),
     };
     for (const [key, value] of Object.entries(outputs))
       new cdk.CfnOutput(this, key, { value });

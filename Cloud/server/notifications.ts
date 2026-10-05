@@ -26,8 +26,7 @@ export function localClock(day: DateTime, time: string) {
 export function notificationPlan(w: Workspace, now = Date.now()): NotificationJob[] {
   const jobs: NotificationJob[] = [];
   const add = (draft: Draft) => {
-    // Keep distant one-time reminders too. The Pi sleeps until their fire time,
-    // without needing a periodic refresh to discover them later.
+    // Keep distant one-time reminders for authoritative delivery validation.
     if (Date.parse(draft.expiresAt) > now) jobs.push(job(draft));
   };
   for (const task of w.tasks) {

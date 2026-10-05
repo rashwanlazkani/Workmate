@@ -37,8 +37,6 @@ For current app data, a `drive-<workspaceID>` identity scopes ownership. S3 snap
 
 Bot tokens live in Secrets Manager and are excluded from workspace backups. Delivery leases reduce duplicate retries, although Telegram has no send-message idempotency key. Failures feed an SQS queue and CloudWatch alarm. DynamoDB point-in-time recovery is enabled; logs retain fourteen days. The table, user pool, and legacy website bucket are retained on stack deletion.
 
-## Raspberry Pi runner
+## Telegram actions
 
-`/agent/plan` and `/agent/deliver` require a separate, provisioned agent key. The plan exposes only timing and opaque identifiers for opted-in task reminders, enabled meetings and the daily brief. The API validates a delivery against the newest workspace before sending and shares receipts with EventBridge fallback schedules. It supports per-weekday meeting times and timezone transitions. The agent heartbeat is available in the existing Telegram status response.
-
-Telegram callbacks validate the paired chat, persist completion or a one-hour snooze, back up the change to S3, and edit the original message with confirmation. Completed tasks remain in Archive. The Mac merges these edits into iCloud at its next sync. See `../Agent/README.md` for provisioning, Docker deployment, verification and revocation.
+Telegram callbacks validate the paired chat, persist completion or a one-hour snooze, back up the change to S3, and edit the original message with confirmation. Completed tasks remain in Archive. The Mac merges these edits into iCloud at its next sync. Task, meeting and daily brief reminders use EventBridge Scheduler directly; no external runner is required.

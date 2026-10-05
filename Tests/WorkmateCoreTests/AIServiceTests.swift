@@ -103,3 +103,33 @@ struct AIEditValidationTests {
         #expect(throws: AIError.self) { try AIEditValidation.validate(original: "Ship tomorrow", result: "Ship on 2026-10-05") }
     }
 }
+
+struct AICustomBudgetTests {
+    @Test func oldLedgerDefaultsToFiveAndChangingLimitPreservesUsage() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: url) }
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        let month = AIBudget.month(Date())
+        try JSONSerialization.data(withJSONObject: ["months": [month: 3.0]]).write(to: url.appendingPathComponent("budget.json"))
+        let budget = AIBudget(directory: url)
+        #expect(try budget.monthlyLimit() == 5)
+        try budget.setMonthlyLimit(2)
+        #expect(try budget.reserved() == 3)
+        #expect(throws: AIError.self) { try budget.reserve(0.01) }
+        try budget.setMonthlyLimit(10)
+        try AIBudget(directory: url).reserve(1)
+        #expect(try budget.reserved() == 4)
+        #expect(try AIBudget(directory: url).monthlyLimit() == 10)
+        try budget.setMonthlyLimit(0)
+        #expect(throws: AIError.self) { try budget.reserve(0.01) }
+        #expect(try budget.reserved() == 4)
+    }
+    @Test func acceptsDecimalCommaAndRejectsInvalidMaximums() throws {
+        #expect(try AIBudget.parseLimit(" 2,50 ") == 2.5)
+        #expect(try AIBudget.parseLimit("0") == 0)
+        #expect(try AIBudget.parseLimit("12.75") == 12.75)
+        for invalid in ["", "-1", "nan", "inf", "1e3", "1.234", "1,234.56", "1000001"] {
+            #expect(throws: AIError.self) { try AIBudget.parseLimit(invalid) }
+        }
+    }
+}

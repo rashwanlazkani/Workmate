@@ -9,8 +9,5 @@ cdk-outputs.json
 !.env.example
 .DS_Store
 *.app/
-Agent/data/
-Agent/connection.json
-Agent/credentials/
 __pycache__/
 *.pyc

@@ -37,6 +37,7 @@ private final class AINetworkPolicy: NSObject, URLSessionTaskDelegate, @unchecke
     @Published var provider: AIProvider { didSet { UserDefaults.standard.set(provider.rawValue, forKey: "ai-provider"); cache.removeAll(); refresh() } }
     @Published private(set) var busy = false
     @Published private(set) var reserved = 0.0
+    @Published private(set) var monthlyMaximum = AIBudget.defaultLimit
     @Published private(set) var keySaved = false
     @Published private(set) var budgetError: String?
     private let budget: AIBudget
@@ -55,7 +56,11 @@ private final class AINetworkPolicy: NSObject, URLSessionTaskDelegate, @unchecke
     }
     func refresh() {
         keySaved = AIKeys.read(provider) != nil
-        do { reserved = try budget.reserved(); budgetError = nil } catch { budgetError = "Cannot read the AI budget. Paid requests are blocked until the budget file is available." }
+        do { reserved = try budget.reserved(); monthlyMaximum = try budget.monthlyLimit(); budgetError = nil } catch { budgetError = "Cannot read the AI budget. Paid requests are blocked until the budget file is available." }
+    }
+    func setMonthlyMaximum(_ text: String) throws {
+        try budget.setMonthlyLimit(AIBudget.parseLimit(text))
+        refresh()
     }
     func saveKey(_ value: String) throws {
         try AIKeys.save(value.trimmingCharacters(in: .whitespacesAndNewlines), provider: provider)
